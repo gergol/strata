@@ -7,7 +7,7 @@ on:
         required: true
         default: verify
         type: choice
-        options: [verify, probe]
+        options: [verify, probe, sample]
       target:
         description: "Space-separated layer files or URLs"
         required: true

@@ -7,10 +7,15 @@
  *   probe <url...>          HEAD each URL, print status/size/range/CORS headers
  *   verify <layer.yaml...>  run each layer's health_assertion through the real
  *                           pipeline against the live endpoint; exit 1 on failure
+ *   sample <layer.yaml> <lon> <lat>   print raster metadata and a raw 5x5 pixel
+ *                           grid around the coordinate (debugging aid)
  */
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
+import { fromUrl } from 'geotiff';
+import proj4 from 'proj4';
 import {
+  CRS_REGISTRY,
   CogAdapter,
   LocalQueryEngine,
   MemoryCache,
@@ -103,12 +108,49 @@ async function verify(files: string[]): Promise<number> {
   return failures === 0 ? 0 : 1;
 }
 
+async function sample(file: string, lon: number, lat: number): Promise<number> {
+  const d = loadDescriptorYaml(readFileSync(file, 'utf8'));
+  const tiff = await fromUrl(d.endpoint);
+  const count = await tiff.getImageCount();
+  console.log(`images: ${count}`);
+  for (let i = 0; i < count; i++) {
+    const img = await tiff.getImage(i);
+    const bb = img.getBoundingBox();
+    const res = (bb[2]! - bb[0]!) / img.getWidth();
+    console.log(`  [${i}] ${img.getWidth()}x${img.getHeight()} res=${res.toFixed(1)} bbox=[${bb.map((v) => v!.toFixed(0)).join(', ')}]`);
+  }
+  const img = await tiff.getImage(0);
+  const fd = img.fileDirectory as unknown as Record<string, unknown>;
+  console.log(
+    `GDAL_NODATA=${JSON.stringify(fd['GDAL_NODATA'])} BitsPerSample=${JSON.stringify(fd['BitsPerSample'])} SampleFormat=${JSON.stringify(fd['SampleFormat'])}`,
+  );
+  const native =
+    d.crs === 'EPSG:4326'
+      ? [lon, lat]
+      : (proj4(CRS_REGISTRY['EPSG:4326'] as string, CRS_REGISTRY[d.crs] as string, [lon, lat]) as [number, number]);
+  const [minX, minY, maxX, maxY] = img.getBoundingBox() as [number, number, number, number];
+  console.log(`native: ${native[0]}, ${native[1]} (bbox x ${minX}..${maxX}, y ${minY}..${maxY})`);
+  const col = Math.floor(((native[0]! - minX) / (maxX - minX)) * img.getWidth());
+  const row = Math.floor(((maxY - native[1]!) / (maxY - minY)) * img.getHeight());
+  console.log(`pixel: col=${col} row=${row} of ${img.getWidth()}x${img.getHeight()}`);
+  const window = [Math.max(0, col - 2), Math.max(0, row - 2), col + 3, row + 3];
+  const rasters = await img.readRasters({ window: window as [number, number, number, number], samples: [0] });
+  const data = rasters[0] as ArrayLike<number>;
+  const w = (window[2]! - window[0]!);
+  for (let r = 0; r < (window[3]! - window[1]!); r++) {
+    console.log(`  ${Array.from({ length: w }, (_, c) => String(data[r * w + c])).join('\t')}`);
+  }
+  return 0;
+}
+
 const [mode, ...args] = process.argv.slice(2);
 if (mode === 'probe' && args.length > 0) {
   process.exit(await probe(args));
 } else if (mode === 'verify' && args.length > 0) {
   process.exit(await verify(args));
+} else if (mode === 'sample' && args.length === 3) {
+  process.exit(await sample(args[0] as string, Number(args[1]), Number(args[2])));
 } else {
-  console.error('usage: verify.ts probe <url...> | verify <layer.yaml...>');
+  console.error('usage: verify.ts probe <url...> | verify <layer.yaml...> | sample <layer.yaml> <lon> <lat>');
   process.exit(2);
 }
