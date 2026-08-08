@@ -1,14 +1,16 @@
 # Strata — Decisions Register
-**Status:** all entries **Proposed** (recommendations awaiting author sign-off) unless marked Accepted
+**Status:** D1–D9 **Accepted** by the author, 2026-08-08 (D1 with a rider — see below)
 **Date:** 2026-08-08 (D1/D2/D6/D8 revised same day after the client-only question — see D1 history)
 
-Numbered to match requirements §12. Each entry records the position the [technical plan](plan.md) currently assumes, so reversing one shows exactly what has to change. Decisions D1, D2 and D7 gate Phase 0; the rest bind later phases.
+Numbered to match requirements §12. Each entry records the position the [technical plan](plan.md) assumes, so reversing one shows exactly what has to change. Decisions D1, D2 and D7 gate Phase 0; the rest bind later phases.
 
 ---
 
 ## D1 — Architecture split: client-only, no server, no database (gates Phase 0)
 
 **Position: Strata is a static PWA plus scheduled GitHub Actions. Nothing else runs anywhere.**
+
+**Accepted with a rider (2026-08-08): craft the architecture so a later switch to a proxy stays contained.** Concretely, three structural commitments (details in plan §4.5): (a) the UI talks only to the `QueryEngine` interface — the local in-worker engine and a future remote proxy engine are interchangeable implementations; (b) every `LayerResult` is JSON-serializable, so the engine boundary can become an HTTP boundary without changing either side; (c) adapters touch network and storage only through the injected `IO` seam. A proxy deployment then reuses `packages/core` server-side behind the same interface — the Actions runner already proves core runs in Node.
 
 **History:** v1 of this register recommended a thin server proxy. Re-examined when the author asked whether client-only was possible, the proxy's four supporting arguments dissolve for a single-operator instrument (full table in plan §1.1): rate limiting fits in the query-engine worker with Web Locks across tabs; scheduled health checks move to an Actions cron committing status to the repo; API keys become bring-your-own-key in localStorage instead of secrets behind a proxy; and CORS — the one argument that survives — is a per-layer data problem, not an architecture problem, handled by a three-step mitigation ladder (accept the loss → materialize via Actions → a single stateless CORS shim as a named last resort, built only when a specific layer forces it).
 

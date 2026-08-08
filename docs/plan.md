@@ -2,6 +2,7 @@
 **Status:** proposed v0.2 (companion to [requirements.md](requirements.md) draft v0.2)
 **Date:** 2026-08-08
 **Changed in v0.2:** architecture revised from thin-server-proxy to client-only after re-examination (see §1 and decisions.md D1); Phases 1–4 detailed (§8); requirements deviations forced by client-only recorded (§5).
+**Changed in v0.3:** decisions D1–D9 accepted by the author; D1 carries a rider — keep a later proxy switch contained — implemented as §4.5.
 
 This document turns the requirements into buildable decisions: architecture shape, stack, repository layout, core contracts, and a work breakdown for all phases. Positions on the open decisions of requirements §12 live in [decisions.md](decisions.md); this plan assumes the recommendations there and must be revised if they change.
 
@@ -166,6 +167,16 @@ The cache key includes the descriptor hash, so editing a descriptor invalidates 
 ### 4.4 Health runner (GitHub Actions)
 
 Cron workflow (6-hourly to start) in `packages/runner`: load all descriptors, run each `health_assertion` through the same pipeline with Node IO (cache bypassed, secrets-supplied keys, proper User-Agent — the runner *can* set one), write `data/status/status.json` and append to history, commit. The client fetches the committed status at launch, shows degraded badges (R8.3), and opportunistically re-checks layers it is actively using. R8.1–R8.3, R8.5 satisfied with zero servers; R8.2 satisfied in amended form (§5).
+
+### 4.5 Location transparency — the proxy switch, kept containable
+
+D1's acceptance rider: the client-only choice must not weld the design to the browser. Three structural commitments, all enforced from M0.1 onward:
+
+1. **The UI codes only against `QueryEngine`** (`point(layerId, at)`, `tile(layerId, tile)`, `layers()`), never against adapters, the cache, or the limiter. Today's implementation is the local in-worker engine; a `RemoteQueryEngine` that answers the same interface over HTTP is the entire client-side cost of a proxy switch.
+2. **Every `LayerResult` is JSON-serializable** — plain data, no classes, no functions, verified by a round-trip test in `packages/core`. The worker boundary already forces structured-clone-safe results; HTTP needs nothing more.
+3. **Adapters reach network and storage only through the injected `IO` seam**, so the same adapter code runs in the browser worker, the Actions runner, and — if it ever exists — a proxy process. The proxy is then `packages/core` behind a thin HTTP shell implementing `QueryEngine`, not a rewrite.
+
+The triggers that would activate this switch are listed in §9; nothing else in the codebase may depend on where the engine runs.
 
 ## 5. Requirements deviations (proposed amendments for requirements v0.3)
 
