@@ -27,8 +27,10 @@ licence: CC-BY-4.0
 commercial_use: true
 attribution: "ISRIC — World Soil Information, SoilGrids"
 attribution_url: https://soilgrids.org
+# Note: central Vienna is nodata at 5 km (urban mask) — a soil layer's canary
+# must stand on soil. Marchfeld farmland NE of Vienna:
 health_assertion:
-  at: [16.37, 48.21]
+  at: [16.75, 48.30]
   expect_range: [5.0, 9.0]
 coverage: global
 provenance_note: "Machine-learning model prediction (not measurement), 5 km aggregated from the 250 m SoilGrids 2.0 product"
