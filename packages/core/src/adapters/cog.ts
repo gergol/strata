@@ -16,6 +16,7 @@
 import type { GeoTIFF, GeoTIFFImage } from 'geotiff';
 import { fromUrl } from 'geotiff';
 import proj4 from 'proj4';
+import '../proj/igh.js'; // registers +proj=igh (SoilGrids), absent from stock proj4js
 import type { Adapter, AdapterOutcome } from '../adapter.js';
 import { CRS_REGISTRY } from '../crs.js';
 import type { AggregationId, LayerDescriptor } from '../descriptor.js';
