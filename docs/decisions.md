@@ -2,7 +2,7 @@
 **Status:** D1–D9 **Accepted** by the author, 2026-08-08 (D1 with a rider — see below)
 **Date:** 2026-08-08 (D1/D2/D6/D8 revised same day after the client-only question — see D1 history)
 
-Numbered to match requirements §12. Each entry records the position the [technical plan](plan.md) assumes, so reversing one shows exactly what has to change. Decisions D1, D2 and D7 gate Phase 0; the rest bind later phases.
+Numbered to match requirements §12. Each entry records the position the [technical plan](plan.md) assumes, so reversing one shows exactly what has to change. Decisions D1, D2 and D7 gate Phase 0, and D9's no-silent-port policy applies from Phase 0; the rest bind later phases.
 
 ---
 
@@ -48,7 +48,7 @@ Numbered to match requirements §12. Each entry records the position the [techni
 
 **Position: run an RTL-SDR receiver and feed adsb.lol / adsb.fi / airplanes.live, using the elevated API access feeders receive (as a BYOK key, per D1).** This resolves both sides of §12.8: local line-of-sight coverage with zero terms, wide-area coverage through the feeder tier, and standing on the right side of the volunteer-economy exchange. OpenSky remains the fallback if hardware doesn't happen. **Verify feeder-tier terms at Phase 3 start, not now.**
 
-**Client-only caveat:** with no standing process, aircraft are live-while-watching; the derived ADS-B analytics of requirements §9.5 (runway-in-use, holding patterns, transponder gaps) additionally require the M3.6 backend checkpoint to conclude "yes, run a home box". The receiver hardware itself is unaffected — it feeds the aggregator regardless of whether Strata has a backend.
+**Client-only caveat:** with no standing process, aircraft are live-while-watching; the derived ADS-B analytics of requirements §9, derivation 5 (runway-in-use, holding patterns, transponder gaps) additionally require the M3.6 backend checkpoint to conclude "yes, run a home box". The receiver hardware itself is unaffected — it feeds the aggregator regardless of whether Strata has a backend.
 
 ## D9 — Prototype salvage: concepts yes, code no — with one audition
 

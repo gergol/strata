@@ -6,13 +6,13 @@ A personal geospatial exploration instrument. The question it answers:
 
 Breadth across domains — weather, subsurface, energy, traffic, history, wildlife, infrastructure — is the whole point. No single specialist app can answer a question that spans domains; Strata trades depth in any one of them for reach across all of them. Coverage is permanently uneven by design, hence the name: what you get is layers, not completeness.
 
-**Status: planning.** No code yet. The project is currently defined by three documents:
+**Status: Phase 0 (foundations) in progress.** Milestone M0.1 — the contracts package (`packages/core`: descriptor schema, result envelope, tile math, engine interfaces) — is done and tested; the map client does not exist yet. The project is defined by three documents:
 
 | Document | Contents |
 |---|---|
-| [docs/requirements.md](docs/requirements.md) | Requirements draft v0.2 — interaction modes, the five-adapter architecture, aggregation semantics, the layer catalogue (~70 candidate sources), phasing |
-| [docs/plan.md](docs/plan.md) | Technical plan — architecture shape, stack, core contracts, Phase 0 work breakdown |
-| [docs/decisions.md](docs/decisions.md) | Decisions register — proposed positions on the nine open decisions |
+| [docs/requirements.md](docs/requirements.md) | Requirements — interaction modes, the six-adapter architecture, aggregation semantics, the layer catalogue (~70 candidate sources), phasing |
+| [docs/plan.md](docs/plan.md) | Technical plan — architecture shape, stack, core contracts, work breakdown for Phases 0–4 |
+| [docs/decisions.md](docs/decisions.md) | Decisions register — accepted positions on the nine decisions (D1–D9) |
 
 ## Design ideas in one paragraph
 

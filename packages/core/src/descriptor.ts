@@ -117,7 +117,10 @@ export const layerDescriptorSchema = z
     zoom_valid: z.tuple([z.number().int().min(0).max(22), z.number().int().min(0).max(22)]),
     value_type: z.enum(VALUE_TYPES),
     aggregation: aggregationDeclSchema.optional(),
+    /** Post-scaling display unit — what every result carries (plan §5 amendment to §6). */
     unit: z.string().optional(),
+    /** Upstream's raw unit before scale_factor, for documentation (e.g. "pH*10"). */
+    native_unit: z.string().optional(),
     scale_factor: z.number().optional(),
     nodata: z.number().optional(),
     ttl: z.string().refine(isValidDuration, {

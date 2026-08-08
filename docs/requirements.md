@@ -1,6 +1,7 @@
 # Strata — Requirements & Planning Document
-**Status:** draft v0.2
+**Status:** draft v0.2.1
 **Date:** 2026-08-08
+**Errata v0.2.1 (2026-08-08 audit):** six adapters, not five (§3); GIBS adapter code corrected to A6 (§10.2); §9 derivations are referenced as "§9, derivation *n*" (there are no §9 subsections); §6 example aligned with descriptor schema v1 — see plan §5 for the recorded deviations.
 **Name:** **Strata** — chosen over the working title "Anything-Map". The name refers to the layered structure of what the app exposes about a place, and deliberately avoids promising completeness, since coverage will be permanently uneven (see §10). "Strata" is plural; the singular "Stratum" is available if a singular reads better in UI copy.
 **Author's context:** a new OSM-based general-purpose geospatial data explorer, built from scratch. A prior flight-radar prototype exists but is treated here as a source of learning only — no code, feed, or ingestion is assumed to carry over. Aircraft are one layer among many, competing for priority on the same terms as everything else.
 ---
@@ -31,8 +32,8 @@ Three distinct query modes, each with different semantics. A layer may support o
 | **M3 — Continuous overlay** | Layer toggled on | Visual rendering across the map | Raster tiles or vector features. No aggregation needed. |
 **Key requirement:** M2 must not be implemented as a generic function over M1. "The value for this tile" is a well-defined question for only a minority of layers. See §4.
 ---
-## 3. Architecture — five access adapters
-Every data source encountered in research collapses into one of five adapters. Building these five well is what makes breadth affordable; each new layer then becomes configuration.
+## 3. Architecture — six access adapters
+Every data source encountered in research collapses into one of six adapters. Building these six well is what makes breadth affordable; each new layer then becomes configuration.
 ### A1 — BBOX-native vector
 Endpoint accepts a bounding box, returns features. A tile *is* a bbox, so M2 is native.
 Covers: Overpass, all INSPIRE WFS services (cadastre, hazard zones, Natura 2000), USGS earthquakes, NASA FIRMS, GBIF, eBird, OpenAQ, Wikidata SPARQL with geo filter.
@@ -88,14 +89,16 @@ id: soilgrids_ph
 name: Soil pH (0–5 cm)
 domain: subsurface
 adapter: cog                  # bbox_vector | cog | region | point_sample | stream | precomputed
-endpoint: https://…/phh2o_0-5cm_mean.tif
+endpoint: https://files.isric.org/soilgrids/latest/data/phh2o/phh2o_0-5cm_mean.vrt
 crs: EPSG:152160              # native CRS; reprojection is the adapter's job
 modes: [point, tile, overlay]
 zoom_valid: [10, 18]
+value_type: numeric           # numeric | categorical | feature — decides which rules below bind
 aggregation:
   primary: mean
   secondary: [min, max, p10, p90]
-unit: pH*10                   # native unit and scaling factor — a frequent source of silent error
+unit: pH                      # display unit, after scale_factor is applied
+native_unit: "pH*10"          # upstream's raw unit — a frequent source of silent error
 scale_factor: 0.1
 ttl: 30d                      # geology never changes; air quality is hourly; ADS-B is per-second
 rate_limit:
@@ -107,10 +110,11 @@ attribution: "ISRIC — World Soil Information"
 attribution_url: https://soilgrids.org
 health_assertion:
   at: [16.37, 48.21]
-  expect_range: [50, 90]
+  expect_range: [5.0, 9.0]     # post-scaling units, same as the pipeline output
 coverage: global
 provenance_note: "250 m modelled, not measured"
 ```
+> *Schema note (v0.2.1):* the implemented descriptor schema v1 (`packages/core`) additionally defines optional `nodata` (sentinel filtered before scaling), `browser_access` (plan §5), `location_precision` (decision D5), `search_beyond_tile` (R4.4), and `params` (adapter-specific configuration). `value_type` is mandatory: it decides whether R6.3 (numeric) or R4.3 (categorical) binds.
 ### 6.1 Requirements
 - R6.1 No layer-specific logic outside its adapter. If a layer needs bespoke code, the adapter is under-specified.
 - R6.2 `licence`, `commercial_use`, `attribution` are mandatory fields, validated at load. A layer without them fails to register.
@@ -169,7 +173,7 @@ Adapter codes: **A1** bbox vector · **A2** COG raster · **A3** region lookup �
 | Airspace / airports / navaids | OpenAIP | A1 | global | static, cheap, and independently useful — worth building before any aircraft feed, not after |
 | Lightning | Blitzortung | A5 | global | **non-commercial terms** |
 | Aurora forecast | NOAA SWPC OVATION | A2 | global | |
-| NRT satellite imagery | NASA GIBS (WMTS) | A3/overlay | global | just a tile URL; an afternoon of work |
+| NRT satellite imagery | NASA GIBS (WMTS) | A6/overlay | global | just a tile URL; an afternoon of work |
 | Webcams | Windy Webcams API | A1 | global | free tier |
 ### 10.3 Atmosphere, weather, hazard
 | Layer | Source | Adapter | Coverage | Notes |
@@ -257,7 +261,7 @@ Adapter codes: **A1** bbox vector · **A2** COG raster · **A3** region lookup �
 **Phase 0 — foundations.** Layer descriptor schema and loader with mandatory-field validation. Central rate limiter and cache. Health-check runner. Empty-state model. Attribution rendering. Build against three deliberately different layers to force the abstraction honest: one A1 (Overpass), one A2 (SoilGrids), one A3 (ENTSO-E).
 **Phase 1 — cheap breadth.** Everything that is one integration for many datasets: Overpass, Wikidata SPARQL, WFS/INSPIRE generic client, GBFS, GIBS tiles, Open-Meteo. This is where the app first stops being a demo and starts answering unanticipated questions.
 **Phase 2 — differentiators.** EGMS ground motion, PVGIS, IACS crop parcels, LiDAR viewshed/shadow, transmitter coverage, historical imagery compare. The layers nobody has made pretty. All are request/response or fully local — no standing infrastructure.
-**Phase 3 — streams.** Build the A5 adapter and its state store, then aircraft, AIS, APRS, EMSC, GTFS-RT. Derived ADS-B analytics (§9.5) follows here, not before.
+**Phase 3 — streams.** Build the A5 adapter and its state store, then aircraft, AIS, APRS, EMSC, GTFS-RT. Derived ADS-B analytics (§9, derivation 5) follows here, not before.
 **Phase 4 — long tail.** Per-country patchworks (fuel prices, property, crime), region-keyed services, crowdsourced feeds.
 Rationale: an OGC/WFS generic client in Phase 1 unlocks dozens of layers at once, which is the leverage that makes breadth tractable rather than a linear grind. Streams are deferred to Phase 3 deliberately — they are the only adapter requiring a persistent process, reconnect logic, and state expiry, and letting that shape the architecture early would distort a design whose other five adapters are stateless and on-demand.
 ---

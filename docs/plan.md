@@ -1,5 +1,5 @@
 # Strata — Technical Plan
-**Status:** proposed v0.2 (companion to [requirements.md](requirements.md) draft v0.2)
+**Status:** v0.3, in effect (companion to [requirements.md](requirements.md) draft v0.2.1)
 **Date:** 2026-08-08
 **Changed in v0.2:** architecture revised from thin-server-proxy to client-only after re-examination (see §1 and decisions.md D1); Phases 1–4 detailed (§8); requirements deviations forced by client-only recorded (§5).
 **Changed in v0.3:** decisions D1–D9 accepted by the author; D1 carries a rider — keep a later proxy switch contained — implemented as §4.5.
@@ -57,7 +57,7 @@ What the client-only shape buys in exchange: zero hosting cost, zero operations,
    1. *Accept the loss.* Coverage is permanently uneven by design.
    2. *Materialize via Actions* (§1.3) — for slow-changing sources this is often *better* than live queries.
    3. *A minimal CORS/key shim* (e.g. a single Cloudflare Worker, no state) — kept as a named escape hatch, not built until a specific must-have layer forces it. Adding it later changes one descriptor field (`endpoint`), not the architecture.
-2. **Streams are live-while-watching.** With no standing process, the A5 state buffer exists only while the tab is open: no backfill, no history, no observation while away. For watching aircraft, lightning, ships, and earthquakes live, this is fine — that is how the instrument is actually used. What it forecloses is the **derived ADS-B analytics of requirements §9.5** (runway-in-use, holding patterns, transponder gaps), which need continuous observation. That work was already conditional and Phase-3-gated; it now additionally requires the backend-revisit decision of §9 to go the other way first. Recorded in D8.
+2. **Streams are live-while-watching.** With no standing process, the A5 state buffer exists only while the tab is open: no backfill, no history, no observation while away. For watching aircraft, lightning, ships, and earthquakes live, this is fine — that is how the instrument is actually used. What it forecloses is the **derived ADS-B analytics of requirements §9, derivation 5** (runway-in-use, holding patterns, transponder gaps), which need continuous observation. That work was already conditional and Phase-3-gated; it now additionally requires the backend-revisit decision of §9 to go the other way first. Recorded in D8.
 3. **Politeness identification is weaker.** Browsers cannot set `User-Agent` (it is a forbidden header), so R7.5 as written is unsatisfiable from the client. The `Origin`/`Referer` headers do identify the app, the app's public URL carries contact details, and query-parameter identification is used where providers support it. MET Norway, which *requires* identifying UA headers, is dropped in favour of Open-Meteo (which is explicitly browser-friendly) — or reached via the Actions health runner/materializer only, where UA can be set. Recorded as a requirements deviation in §5.
 
 ### 1.3 The materializer pattern
@@ -124,8 +124,9 @@ interface Adapter {
   tile(layer: LayerDescriptor, tile: TileId, io: IO): Promise<LayerResult>; // iff 'tile' ∈ modes
   overlaySpec(layer: LayerDescriptor): OverlaySpec | null;                  // how M3 renders
 }
-// IO = injected fetch + cache + limiter handle — the seam that keeps core isomorphic
-// (browser worker and Actions runner supply different IO implementations)
+// IO = injected fetch + cache + clock — the seam that keeps core isomorphic
+// (browser worker and Actions runner supply different IO implementations;
+//  the limiter wraps the pipeline's fetch path centrally, adapters never see it)
 ```
 
 One implementation per adapter class (A1–A6), zero per layer (R6.1). `tile()` is **not** sampling `point()` (requirements §2); each adapter implements the aggregations its data shape supports and the descriptor selects among them (R4.1). If a layer seems to need code, the fix is a new descriptor field with defined semantics — the pressure the three Phase 0 probe layers exist to apply.
@@ -147,7 +148,7 @@ type LayerResult =
   | { status: 'empty' }                              // covered, genuinely nothing (information)
   | { status: 'no_coverage' }                        // territory not in dataset (a gap)
   | { status: 'zoom_invalid'; reason: string }       // R5.1/R5.2
-  | { status: 'error'; kind: 'upstream' | 'timeout' | 'schema' | 'rate_limited' | 'cors' }
+  | { status: 'error'; kind: 'upstream' | 'timeout' | 'schema' | 'rate_limited' | 'circuit_open' | 'cors' }
   | { status: 'degraded'; ... }                      // health assertion failing (R8.3)
 ```
 
@@ -188,6 +189,8 @@ Client-only makes three requirements unsatisfiable as written. Rather than silen
 | R8.2 | Health checks run on a schedule independent of user activity | Satisfied by the Actions cron rather than a resident process. Amend wording to "on a schedule independent of user activity, not necessarily by a resident service". |
 | R7.3 | Concurrency caps enforced centrally | "Centrally" becomes "in the single query-engine worker, coordinated across tabs via Web Locks". Same guarantee for a single operator. |
 | §13 checklist | — | **Add:** "CORS (and `Range`, for COG) verified from a browser context; if blocked, the materialize-vs-drop decision is recorded in the descriptor". Suggested descriptor field: `browser_access: direct | materialized | blocked`. |
+| §6 descriptor | `unit` is the native unit ("pH*10") | **Redefined:** `unit` is the post-scaling *display* unit carried into every result; optional `native_unit` documents the upstream's raw unit. Schema v1 additionally requires `value_type` (numeric/categorical/feature — it decides whether R6.3 or R4.3 binds) and adds optional `nodata`, `search_beyond_tile` (R4.4), and `params`. Requirements §6 example updated in v0.2.1. |
+| §11 Phase 0 | A3 probe layer is ENTSO-E | **Substituted Energy-Charts** — same A3 shape (bidding-zone region lookup), but browser-reachable; raw ENTSO-E is not CORS-accessible and needs a token, and moves behind the materializer if ever needed. |
 
 ## 6. Phase 0 work breakdown
 
@@ -197,7 +200,7 @@ Goal unchanged: force the descriptor and adapter contracts honest against three 
 *Accept:* descriptor missing `licence`/`attribution`/`unit`/`scale_factor` fails load with a precise error (R6.2, R6.3); unknown `crs` fails hard (R8.4). Unit tests only, no I/O.
 
 **M0.2 — Query engine.** Worker hosting the pipeline; IndexedDB cache; per-layer limiter + circuit breaker; Web Locks tab coordination; 429/Retry-After backoff.
-*Accept:* R7.2, R7.3 (amended), R7.6 demonstrable against a mock upstream — second request inside `min_interval_ms` queues; repeated failures open the circuit and return `degraded`-kind errors, not retries.
+*Accept:* R7.2, R7.3 (amended), R7.6 demonstrable against a mock upstream — second request inside `min_interval_ms` queues; repeated failures open the circuit, after which queries short-circuit to `error`/`circuit_open` without touching the upstream (`degraded` remains reserved for failing health assertions, R8.3).
 
 **M0.3 — SoilGrids (A2).** geotiff.js adapter: overview selection by zoom, windowed range reads, continuous aggregations and categorical histogram (R4.3 — needed immediately for WorldCover at Phase 0 exit).
 *Accept:* soil pH at a known Vienna coordinate matches documented value; §13 checklist (incl. new CORS/Range item) passes; z6 tile query returns `zoom_invalid` with reason (R5.2). *This milestone is the browser-COG feasibility gate — see risk table.*
@@ -270,7 +273,7 @@ Phasing follows requirements §11; this section adds the milestone-level detail.
 - **M3.3 — Earthquakes + lightning.** EMSC WebSocket; Blitzortung (verify current WS access terms — non-commercial is fine, §1.3 of requirements).
 - **M3.4 — AIS + APRS.** aisstream.io WS (BYOK) for covered waters; APRS via aprs.fi API politely.
 - **M3.5 — GTFS-RT.** protobuf decode in worker; per-country descriptors where feeds are browser-reachable; accept patchiness (materializing realtime feeds is pointless).
-- **M3.6 — Backend-revisit checkpoint.** The one place the no-server decision is formally re-examined: if §9.5 ADS-B analytics (or value-history archiving, D2) is still wanted, the answer is a small always-on box running `packages/runner` headless — the isomorphic core means no rewrite, just a third IO host. Until someone actually wants it, it does not exist.
+- **M3.6 — Backend-revisit checkpoint.** The one place the no-server decision is formally re-examined: if the ADS-B analytics of requirements §9 derivation 5 (or value-history archiving, D2) is still wanted, the answer is a small always-on box running `packages/runner` headless — the isomorphic core means no rewrite, just a third IO host. Until someone actually wants it, it does not exist.
 
 *Phase exit:* ≥3 independent live feeds moving on the map in one session.
 
@@ -289,7 +292,7 @@ Representative buckets, ordered by expected joy-per-effort:
 ## 9. When to revisit "no server"
 
 Named triggers, so drift can't happen silently (the same discipline D9 applies to the prototype):
-1. §9.5 ADS-B analytics genuinely wanted → M3.6 checkpoint, home box running `runner`.
+1. ADS-B analytics (requirements §9, derivation 5) genuinely wanted → M3.6 checkpoint, home box running `runner`.
 2. Value history / archive wanted (D2 reversal) → same box, plus retention design.
 3. A must-have live layer is CORS-blocked and un-materializable → single stateless Worker shim (not a server in any operational sense).
 4. Browser COG reading proves broadly infeasible at M0.3 → full D1 reversal back to plan v0.1's proxy, decided in week one.

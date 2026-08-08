@@ -49,7 +49,7 @@ export type ResultValue = ScalarValue | HistogramValue | FeaturesValue;
  */
 export type ResultBasis = 'aggregated' | 'sampled' | 'nearest';
 
-export type ErrorKind = 'upstream' | 'timeout' | 'schema' | 'rate_limited' | 'cors';
+export type ErrorKind = 'upstream' | 'timeout' | 'schema' | 'rate_limited' | 'circuit_open' | 'cors';
 
 export interface OkResult {
   status: 'ok';

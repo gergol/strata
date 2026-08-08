@@ -19,6 +19,7 @@ const valid = {
   value_type: 'numeric',
   aggregation: { primary: 'mean', secondary: ['min', 'max', 'p10', 'p90'] },
   unit: 'pH',
+  native_unit: 'pH*10',
   scale_factor: 0.1,
   nodata: -32768,
   ttl: '30d',

@@ -38,6 +38,7 @@ describe('location transparency (plan §4.5)', () => {
       noCoverage(),
       zoomInvalid('reason'),
       queryError('cors', 'blocked by upstream CORS policy'),
+      queryError('circuit_open', 'circuit open after 5 consecutive upstream failures'),
       { status: 'degraded', reason: 'health assertion failing since 2026-08-07', lastOkAt: '2026-08-06T00:00:00Z' },
     ];
     for (const r of results) {
