@@ -1,0 +1,270 @@
+/**
+ * The layer descriptor schema — the configuration contract of requirements §6.
+ * Validation here is the enforcement point for R6.2 (licence/attribution mandatory),
+ * R6.3 (unit/scale_factor mandatory for numeric layers), R8.4 (no CRS guessing),
+ * R4.1/R4.3 (declared aggregation), R5.1 (zoom validity) and D5 (heritage precision).
+ *
+ * The schema is `.strict()` throughout: an unrecognised or misspelled key is an
+ * error, because a typo'd `scale_faktor` silently defaulting away is exactly the
+ * failure class this file exists to prevent.
+ */
+import { z } from 'zod';
+import { parse as parseYaml } from 'yaml';
+import { isKnownCrs, knownCrsCodes } from './crs.js';
+import { isValidDuration } from './units.js';
+
+export const ADAPTERS = ['bbox_vector', 'cog', 'region', 'point_sample', 'stream', 'precomputed'] as const;
+export type AdapterId = (typeof ADAPTERS)[number];
+
+export const MODES = ['point', 'tile', 'overlay'] as const;
+export type Mode = (typeof MODES)[number];
+
+export const DOMAINS = [
+  'transport',
+  'sky',
+  'weather',
+  'subsurface',
+  'terrain',
+  'environment',
+  'energy',
+  'built',
+  'history',
+  'society',
+] as const;
+export type Domain = (typeof DOMAINS)[number];
+
+export const AGGREGATIONS = [
+  'mean',
+  'min',
+  'max',
+  'median',
+  'p10',
+  'p90',
+  'sum',
+  'count',
+  'density',
+  'histogram',
+  'modal_with_confidence',
+  'feature_list',
+  'nearest',
+  'latest',
+] as const;
+export type AggregationId = (typeof AGGREGATIONS)[number];
+
+export const VALUE_TYPES = ['numeric', 'categorical', 'feature'] as const;
+export type ValueType = (typeof VALUE_TYPES)[number];
+
+const lonLatSchema = z.tuple([
+  z.number().min(-180).max(180),
+  z.number().min(-90).max(90),
+]);
+
+const bboxSchema = z.tuple([z.number(), z.number(), z.number(), z.number()]);
+
+const healthAssertionSchema = z
+  .object({
+    at: lonLatSchema,
+    expect_range: z.tuple([z.number(), z.number()]).optional(),
+    expect_min_count: z.number().int().nonnegative().optional(),
+    expect_status: z.enum(['ok', 'empty']).optional(),
+  })
+  .strict()
+  .superRefine((h, ctx) => {
+    if (h.expect_range === undefined && h.expect_min_count === undefined && h.expect_status === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'health_assertion must declare at least one expectation (expect_range, expect_min_count, or expect_status) — R8.1',
+      });
+    }
+    if (h.expect_range !== undefined && h.expect_range[0] > h.expect_range[1]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['expect_range'],
+        message: `expect_range must be [low, high], got [${h.expect_range[0]}, ${h.expect_range[1]}]`,
+      });
+    }
+  });
+
+const rateLimitSchema = z
+  .object({
+    max_concurrent: z.number().int().min(1).default(2),
+    min_interval_ms: z.number().int().min(0).default(0),
+  })
+  .strict();
+
+const coverageSchema = z.union([
+  z.literal('global'),
+  z.object({ bbox: bboxSchema }).strict(),
+  z.object({ regions: z.array(z.string().min(1)).nonempty() }).strict(),
+]);
+
+const aggregationDeclSchema = z
+  .object({
+    primary: z.enum(AGGREGATIONS),
+    secondary: z.array(z.enum(AGGREGATIONS)).optional(),
+  })
+  .strict();
+
+export const layerDescriptorSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9_]*$/, 'id must be lowercase snake_case'),
+    name: z.string().min(1),
+    domain: z.enum(DOMAINS),
+    adapter: z.enum(ADAPTERS),
+    endpoint: z.string().url(),
+    crs: z.string().regex(/^EPSG:\d+$/, 'crs must be an "EPSG:<code>" string'),
+    modes: z.array(z.enum(MODES)).nonempty(),
+    zoom_valid: z.tuple([z.number().int().min(0).max(22), z.number().int().min(0).max(22)]),
+    value_type: z.enum(VALUE_TYPES),
+    aggregation: aggregationDeclSchema.optional(),
+    unit: z.string().optional(),
+    scale_factor: z.number().optional(),
+    nodata: z.number().optional(),
+    ttl: z.string().refine(isValidDuration, {
+      message: 'ttl must be a duration like "30d", "12h", "5m", "90s", "500ms"',
+    }),
+    rate_limit: rateLimitSchema.default({ max_concurrent: 2, min_interval_ms: 0 }),
+    licence: z.string().min(1),
+    commercial_use: z.boolean(),
+    attribution: z.string().min(1),
+    attribution_url: z.string().url().optional(),
+    health_assertion: healthAssertionSchema,
+    coverage: coverageSchema,
+    provenance_note: z.string().min(1),
+    /** How the browser reaches this layer (plan §5): direct CORS, via materialized asset, or not at all. */
+    browser_access: z.enum(['direct', 'materialized', 'blocked']).default('direct'),
+    /** D5: mandatory for heritage-domain layers; fuzzed locations render as areas, never pins. */
+    location_precision: z.enum(['exact', 'fuzzed', 'centroid']).optional(),
+    /** R4.4: whether a sparse point layer may search beyond the queried geometry. */
+    search_beyond_tile: z.boolean().default(false),
+    /** Adapter-specific configuration (e.g. an Overpass QL template). Validated by the adapter. */
+    params: z.record(z.unknown()).optional(),
+  })
+  .strict()
+  .superRefine((d, ctx) => {
+    if (!isKnownCrs(d.crs)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['crs'],
+        message:
+          `unknown CRS '${d.crs}'. Adapters must never guess CRS (R8.4); ` +
+          `add a pinned proj4 definition to CRS_REGISTRY deliberately. Known: ${knownCrsCodes().join(', ')}`,
+      });
+    }
+    if (d.zoom_valid[0] > d.zoom_valid[1]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['zoom_valid'],
+        message: `zoom_valid must be [min, max], got [${d.zoom_valid[0]}, ${d.zoom_valid[1]}]`,
+      });
+    }
+    if (d.value_type === 'numeric') {
+      if (d.unit === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['unit'],
+          message: 'unit is mandatory for numeric layers (R6.3)',
+        });
+      }
+      if (d.scale_factor === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['scale_factor'],
+          message: 'scale_factor is mandatory for numeric layers (R6.3); use 1 explicitly if values are unscaled',
+        });
+      }
+    }
+    if (d.modes.includes('tile')) {
+      if (d.aggregation === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['aggregation'],
+          message: 'layers supporting tile mode must declare exactly one primary aggregation (R4.1)',
+        });
+      } else if (
+        d.value_type === 'categorical' &&
+        d.aggregation.primary !== 'histogram' &&
+        d.aggregation.primary !== 'modal_with_confidence'
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['aggregation', 'primary'],
+          message:
+            'categorical layers aggregate to a class histogram unless explicitly declared modal_with_confidence (R4.3)',
+        });
+      }
+    }
+    if (d.domain === 'history' && d.location_precision === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['location_precision'],
+        message: 'heritage-domain layers must declare location_precision (decision D5)',
+      });
+    }
+  });
+
+export type LayerDescriptor = z.infer<typeof layerDescriptorSchema>;
+
+export class DescriptorValidationError extends Error {
+  readonly issues: string[];
+  constructor(layerId: string | undefined, issues: string[]) {
+    super(
+      `layer descriptor ${layerId ? `'${layerId}' ` : ''}failed validation and will not register (R6.2):\n` +
+        issues.map((i) => `  - ${i}`).join('\n'),
+    );
+    this.name = 'DescriptorValidationError';
+    this.issues = issues;
+  }
+}
+
+/** Validates an already-parsed object. Throws DescriptorValidationError with precise issues. */
+export function parseDescriptor(input: unknown): LayerDescriptor {
+  const result = layerDescriptorSchema.safeParse(input);
+  if (!result.success) {
+    const id =
+      typeof input === 'object' && input !== null && typeof (input as { id?: unknown }).id === 'string'
+        ? ((input as { id: string }).id)
+        : undefined;
+    const issues = result.error.issues.map((iss) =>
+      iss.path.length > 0 ? `${iss.path.join('.')}: ${iss.message}` : iss.message,
+    );
+    throw new DescriptorValidationError(id, issues);
+  }
+  return result.data;
+}
+
+/** Parses and validates a YAML descriptor document (the authoring format of `layers/`). */
+export function loadDescriptorYaml(yamlText: string): LayerDescriptor {
+  let parsed: unknown;
+  try {
+    parsed = parseYaml(yamlText);
+  } catch (e) {
+    throw new DescriptorValidationError(undefined, [`not valid YAML: ${(e as Error).message}`]);
+  }
+  return parseDescriptor(parsed);
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`);
+  return `{${entries.join(',')}}`;
+}
+
+/**
+ * Stable content hash of a descriptor (FNV-1a 32-bit over canonical JSON).
+ * Part of every cache key, so editing a descriptor invalidates its cache — a
+ * scale-factor fix must never serve stale mis-scaled values. Not cryptographic.
+ */
+export function descriptorHash(d: LayerDescriptor): string {
+  const s = canonicalJson(d);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
