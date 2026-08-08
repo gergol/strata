@@ -59,3 +59,10 @@ export type {
 
 export type { CacheEntry, KVCache, IO } from './io.js';
 export type { LayerSummary, QueryEngine } from './engine.js';
+
+export type { Adapter, AdapterOutcome } from './adapter.js';
+export { RateLimiter, CircuitOpenError } from './limiter.js';
+export type { LimiterClock, LimiterOptions, LayerRateConfig } from './limiter.js';
+export { MemoryCache } from './memory-cache.js';
+export { LocalQueryEngine } from './local-engine.js';
+export type { LocalEngineDeps } from './local-engine.js';

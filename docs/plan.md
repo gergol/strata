@@ -199,7 +199,7 @@ Goal unchanged: force the descriptor and adapter contracts honest against three 
 **M0.1 — Contracts package.** Zod descriptor schema with mandatory-field validation; envelope types; tile math; unit scaling; the `IO` seam.
 *Accept:* descriptor missing `licence`/`attribution`/`unit`/`scale_factor` fails load with a precise error (R6.2, R6.3); unknown `crs` fails hard (R8.4). Unit tests only, no I/O.
 
-**M0.2 — Query engine.** Worker hosting the pipeline; IndexedDB cache; per-layer limiter + circuit breaker; Web Locks tab coordination; 429/Retry-After backoff.
+**M0.2 — Query engine.** The pipeline as a host-agnostic core service: gates, hash-keyed cache, per-layer limiter + circuit breaker, 429/Retry-After backoff, envelope stamping; in-memory cache for runner and tests. Browser hosting (Web Worker, the IndexedDB cache implementation, Web Locks tab coordination) lands with the first real layers, M0.3–M0.7.
 *Accept:* R7.2, R7.3 (amended), R7.6 demonstrable against a mock upstream — second request inside `min_interval_ms` queues; repeated failures open the circuit, after which queries short-circuit to `error`/`circuit_open` without touching the upstream (`degraded` remains reserved for failing health assertions, R8.3).
 
 **M0.3 — SoilGrids (A2).** geotiff.js adapter: overview selection by zoom, windowed range reads, continuous aggregations and categorical histogram (R4.3 — needed immediately for WorldCover at Phase 0 exit).
