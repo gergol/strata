@@ -16,7 +16,7 @@ Breadth across domains — weather, subsurface, energy, traffic, history, wildli
 
 ## Design ideas in one paragraph
 
-Every data source collapses into one of six access adapters (bbox vector, COG raster, region lookup, point sample, stream, precomputed); each concrete layer is then pure configuration — a YAML descriptor declaring endpoint, CRS, licence, attribution, units, cache TTL, rate limits, zoom validity, and crucially its **aggregation semantics**, because "the value of this tile" means something different for geology than for air-quality sensors. A thin server proxy enforces politeness toward (often volunteer-run) upstreams and runs scheduled health assertions so silent upstream schema drift surfaces as a visible *degraded* badge instead of quiet garbage.
+Every data source collapses into one of six access adapters (bbox vector, COG raster, region lookup, point sample, stream, precomputed); each concrete layer is then pure configuration — a YAML descriptor declaring endpoint, CRS, licence, attribution, units, cache TTL, rate limits, zoom validity, and crucially its **aggregation semantics**, because "the value of this tile" means something different for geology than for air-quality sensors. The whole thing runs client-only: a static PWA querying upstreams directly from the browser, with scheduled GitHub Actions doing the two server-shaped jobs (health assertions against every layer, so silent upstream schema drift surfaces as a visible *degraded* badge instead of quiet garbage; and materializing awkward sources into static tiles). No server, no database.
 
 ## Licence
 
