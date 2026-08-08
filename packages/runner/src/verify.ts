@@ -113,11 +113,12 @@ async function sample(file: string, lon: number, lat: number): Promise<number> {
   const tiff = await fromUrl(d.endpoint);
   const count = await tiff.getImageCount();
   console.log(`images: ${count}`);
+  const base = await tiff.getImage(0);
+  const baseBB = base.getBoundingBox();
   for (let i = 0; i < count; i++) {
     const img = await tiff.getImage(i);
-    const bb = img.getBoundingBox();
-    const res = (bb[2]! - bb[0]!) / img.getWidth();
-    console.log(`  [${i}] ${img.getWidth()}x${img.getHeight()} res=${res.toFixed(1)} bbox=[${bb.map((v) => v!.toFixed(0)).join(', ')}]`);
+    const res = (baseBB[2]! - baseBB[0]!) / img.getWidth();
+    console.log(`  [${i}] ${img.getWidth()}x${img.getHeight()} res=${res.toFixed(1)} (bbox shared from image 0)`);
   }
   const img = await tiff.getImage(0);
   const fd = img.fileDirectory as unknown as Record<string, unknown>;

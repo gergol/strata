@@ -115,12 +115,14 @@ export class CogAdapter implements Adapter {
       Math.max(...corners.map((c) => c.y)),
     ];
 
-    const image = await this.pickOverview(tiff, nativeBBox);
-    if (!image) return { kind: 'no_coverage' };
-    const [minX, minY, maxX, maxY] = image.getBoundingBox() as [number, number, number, number];
+    // COG overviews carry no geokeys; georeference comes from the full-res
+    // image and is shared by every level (learned from the live SoilGrids file).
+    const baseImage = await tiff.getImage(0);
+    const [minX, minY, maxX, maxY] = baseImage.getBoundingBox() as [number, number, number, number];
     if (nativeBBox[2] < minX || nativeBBox[0] > maxX || nativeBBox[3] < minY || nativeBBox[1] > maxY) {
       return { kind: 'no_coverage' };
     }
+    const image = await this.pickOverview(tiff, [minX, minY, maxX, maxY], nativeBBox);
 
     const width = image.getWidth();
     const height = image.getHeight();
@@ -161,16 +163,19 @@ export class CogAdapter implements Adapter {
     };
   }
 
-  /** Coarsest overview that still gives adequate resolution, capped by MAX_WINDOW_PIXELS. */
-  private async pickOverview(tiff: GeoTIFF, nativeBBox: BBox): Promise<GeoTIFFImage | null> {
+  /**
+   * Coarsest overview that still gives adequate resolution, capped by
+   * MAX_WINDOW_PIXELS. Resolution per level is derived from the shared
+   * full-image bbox — overview IFDs have no geokeys of their own.
+   */
+  private async pickOverview(tiff: GeoTIFF, imageBBox: BBox, nativeBBox: BBox): Promise<GeoTIFFImage> {
     const count = await tiff.getImageCount();
     const targetRes = (nativeBBox[2] - nativeBBox[0]) / 256; // aim for ~256px across the tile
     let best: GeoTIFFImage | null = null;
     let bestRes = Infinity;
     for (let i = 0; i < count; i++) {
       const image = await tiff.getImage(i);
-      const [minX, , maxX] = image.getBoundingBox() as [number, number, number, number];
-      const res = (maxX - minX) / image.getWidth();
+      const res = (imageBBox[2] - imageBBox[0]) / image.getWidth();
       const windowPixels = ((nativeBBox[2] - nativeBBox[0]) / res) * ((nativeBBox[3] - nativeBBox[1]) / res);
       if (windowPixels > MAX_WINDOW_PIXELS) continue;
       // The finest image still within budget that does not oversample below target.
@@ -179,11 +184,8 @@ export class CogAdapter implements Adapter {
         bestRes = res;
       }
     }
-    if (!best) {
-      // Everything was over budget (absurdly large query bbox) — take the coarsest.
-      best = await tiff.getImage(count - 1);
-    }
-    return best;
+    // Everything over budget (absurdly large query bbox) — take the coarsest.
+    return best ?? tiff.getImage(count - 1);
   }
 
   private classLabel(layer: LayerDescriptor, raw: number): string {
