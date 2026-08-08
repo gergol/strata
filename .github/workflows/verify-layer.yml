@@ -1,0 +1,29 @@
+name: verify-layer
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "verify (layer yaml paths) or probe (URLs)"
+        required: true
+        default: verify
+        type: choice
+        options: [verify, probe]
+      target:
+        description: "Space-separated layer files or URLs"
+        required: true
+        default: layers/soilgrids_ph.yaml
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx packages/runner/src/verify.ts "$MODE" $TARGET
+        env:
+          MODE: ${{ inputs.mode }}
+          TARGET: ${{ inputs.target }}

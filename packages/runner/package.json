@@ -1,0 +1,12 @@
+{
+  "name": "@strata/runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@strata/core": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

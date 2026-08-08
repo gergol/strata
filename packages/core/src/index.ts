@@ -66,3 +66,5 @@ export type { LimiterClock, LimiterOptions, LayerRateConfig } from './limiter.js
 export { MemoryCache } from './memory-cache.js';
 export { LocalQueryEngine } from './local-engine.js';
 export type { LocalEngineDeps } from './local-engine.js';
+export { CogAdapter } from './adapters/cog.js';
+export type { CogAdapterDeps } from './adapters/cog.js';

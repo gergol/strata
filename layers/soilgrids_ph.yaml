@@ -1,0 +1,34 @@
+# Phase 0 probe layer for the A2 (COG) adapter — plan M0.3.
+# Endpoint: ISRIC's 5000 m aggregated COG for v1 (single file, browser-rangeable);
+# the 250 m native product is a VRT over tiled COGs and needs the materializer
+# or per-tile resolution — revisit after Phase 0.
+# Status: pending live verification via the verify-layer workflow (§13).
+id: soilgrids_ph
+name: Soil pH (0–5 cm)
+domain: subsurface
+adapter: cog
+endpoint: https://files.isric.org/soilgrids/latest/data_aggregated/5000m/phh2o/phh2o_0-5cm_mean_5000.tif
+crs: EPSG:152160
+modes: [point, tile]
+zoom_valid: [6, 14]
+value_type: numeric
+aggregation:
+  primary: mean
+  secondary: [min, max, p10, p90]
+unit: pH
+native_unit: "pH*10"
+scale_factor: 0.1
+nodata: -32768
+ttl: 30d
+rate_limit:
+  max_concurrent: 4
+  min_interval_ms: 0
+licence: CC-BY-4.0
+commercial_use: true
+attribution: "ISRIC — World Soil Information, SoilGrids"
+attribution_url: https://soilgrids.org
+health_assertion:
+  at: [16.37, 48.21]
+  expect_range: [5.0, 9.0]
+coverage: global
+provenance_note: "Machine-learning model prediction (not measurement), 5 km aggregated from the 250 m SoilGrids 2.0 product"

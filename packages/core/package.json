@@ -7,7 +7,12 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "geotiff": "^3.0.5",
+    "proj4": "^2.21.0",
     "yaml": "^2.5.0",
     "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/proj4": "^2.5.6"
   }
 }
