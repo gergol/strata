@@ -214,7 +214,8 @@ Goal unchanged: force the descriptor and adapter contracts honest against three 
 **M0.6 — Health runner.** `packages/runner` + cron workflow + committed status/history + client degraded badges.
 *Accept:* R8.1, R8.3, R8.5, R8.2-as-amended; sabotaging a descriptor's endpoint flips the layer to degraded on the next scheduled run with no user traffic, and the git log shows when.
 
-**M0.7 — Minimal client.** MapLibre map + crosshair/click; M1 panel stack for the three layers; per-result attribution; aggregation label on expand (R4.2); provenance note (R6.4); distinct rendering for every envelope state (R5.2, R5.3); zoom greying; debounce + lazy fetch (R7.1, R7.4); BYOK settings panel; Pages deploy workflow.
+**M0.7 — Minimal client.** MapLibre map + crosshair/click; M1 panel stack for the three layers; per-result attribution; aggregation label on expand (R4.2); provenance note (R6.4); distinct rendering for every envelope state (R5.2, R5.3); zoom greying; debounce + lazy fetch (R7.1, R7.4); BYOK settings panel (which keeps the build number/date display introduced with the deploy shell).
+*Note:* the Pages deploy itself was pulled forward ahead of M0.2 — a placeholder client shell ships on every merge to main, with build number, commit, and build date injected at build time and shown in a settings panel (plus a `version.json` beside the bundle for a later served-vs-loaded update check). M0.7 replaces the shell's content, not the deployment.
 *Accept:* a stranger can click anywhere and correctly explain, per layer, what they see and why a panel is grey/empty/erroring — §5 semantics survive contact with the UI.
 
 **M0.8 — Exit review.** Re-read requirements §6 against what M0.3–M0.5 actually required; bespoke code becomes descriptor fields or named adapter capabilities. Freeze descriptor schema v1; write `docs/adding-a-layer.md` (§13 operationalised, CORS item included).
