@@ -16,9 +16,9 @@ import { fromUrl } from 'geotiff';
 import proj4 from 'proj4';
 import {
   CRS_REGISTRY,
-  CogAdapter,
   LocalQueryEngine,
   MemoryCache,
+  defaultAdapters,
   loadDescriptorYaml,
   isOk,
 } from '@strata/core';
@@ -94,7 +94,7 @@ async function verify(files: string[]): Promise<number> {
       const descriptor = loadDescriptorYaml(readFileSync(file, 'utf8'));
       const engine = new LocalQueryEngine([descriptor], {
         io: makeIo(),
-        adapters: { cog: new CogAdapter() },
+        adapters: defaultAdapters(),
       });
       const result = await engine.point(descriptor.id, descriptor.health_assertion.at);
       const pass = checkAssertion(file, result, descriptor.health_assertion);

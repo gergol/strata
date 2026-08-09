@@ -1,0 +1,32 @@
+# Phase 0 probe layer for the A3 (region lookup) adapter — plan M0.5.
+# Coverage is the AT bidding zone for now; adding zones = adding polygons to
+# the region pack, no code. Region pack served from raw.githubusercontent
+# (CORS-open) so browser and Actions runner read the same file.
+id: grid_generation_mix
+name: Electricity generation mix
+domain: energy
+adapter: region
+endpoint: https://api.energy-charts.info/public_power?country={{region}}
+crs: EPSG:4326
+modes: [point, tile]
+zoom_valid: [4, 18]
+value_type: categorical
+aggregation:
+  primary: histogram
+ttl: 15m
+rate_limit:
+  max_concurrent: 2
+  min_interval_ms: 500
+licence: "CC-BY-4.0 (Energy-Charts; underlying data ENTSO-E/SMARD)"
+commercial_use: false
+attribution: "Energy-Charts (Fraunhofer ISE)"
+attribution_url: https://www.energy-charts.info
+health_assertion:
+  at: [14.5, 47.5]          # rural Styria, well inside the AT polygon
+  expect_status: ok
+coverage:
+  regions: [at]
+provenance_note: "Live public net electricity generation for the bidding zone, via Energy-Charts (Fraunhofer ISE) aggregating official ENTSO-E/SMARD data; shares of current generation, not consumption"
+params:
+  regions_url: https://raw.githubusercontent.com/gergol/strata/main/regions/bidding-zones.json
+  format: energy_charts_public_power
