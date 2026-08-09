@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Map as MapLibreMap, Marker, NavigationControl } from 'maplibre-gl';
+  import maplibregl from 'maplibre-gl';
   import 'maplibre-gl/dist/maplibre-gl.css';
   import { onMount } from 'svelte';
   import type { LayerSummary, LonLat } from '@strata/core';
@@ -16,22 +16,32 @@
   let zoom = $state(12);
   let epoch = $state(0);
   let showSettings = $state(false);
+  let mapError = $state<string | null>(null);
 
   onMount(() => {
-    const map = new MapLibreMap({
+    const map = new maplibregl.Map({
       container: mapContainer,
       style: 'https://tiles.openfreemap.org/styles/liberty',
       center: [16.37, 48.21],
       zoom: 12,
       attributionControl: { compact: true },
     });
-    map.addControl(new NavigationControl({ showCompass: false }));
-    let marker: Marker | undefined;
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+    // A silently gray basemap violates our own R5.2 — say what failed.
+    map.on('error', (e) => {
+      const msg = e.error?.message ?? 'unknown map error';
+      console.error('map error:', e.error);
+      if (!mapError) mapError = msg;
+    });
+    map.on('load', () => {
+      mapError = null;
+    });
+    let marker: maplibregl.Marker | undefined;
     map.on('click', (e) => {
       target = [e.lngLat.lng, e.lngLat.lat];
       epoch++;
       marker?.remove();
-      marker = new Marker({ color: '#e8a33d' }).setLngLat(e.lngLat).addTo(map);
+      marker = new maplibregl.Marker({ color: '#e8a33d' }).setLngLat(e.lngLat).addTo(map);
     });
     map.on('moveend', () => {
       zoom = Math.round(map.getZoom());
@@ -42,7 +52,11 @@
 </script>
 
 <div class="app">
-  <div class="map" bind:this={mapContainer}></div>
+  <div class="map" bind:this={mapContainer}>
+    {#if mapError}
+      <div class="map-error">basemap failed to load: {mapError}</div>
+    {/if}
+  </div>
 
   <aside class="side">
     <header>
@@ -112,6 +126,19 @@
   .map {
     flex: 1;
     min-width: 0;
+    position: relative;
+  }
+  .map-error {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    right: 3rem;
+    z-index: 10;
+    background: #4a2020;
+    color: #e8b4b4;
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
   }
   .side {
     width: min(26rem, 90vw);
