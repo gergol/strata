@@ -223,6 +223,16 @@ Goal unchanged: force the descriptor and adapter contracts honest against three 
 
 **Explicitly not in Phase 0:** M3 overlays beyond a stub, A4/A5/A6 adapters, materializers, offline/PWA polish beyond the default service worker, any second layer per adapter beyond the exit dry-run.
 
+### 6.1 Phase 0 exit review (M0.8, 2026-08-09)
+
+M0.1–M0.7 are complete; all three probe layers are live-verified through the verify-layer workflow (SoilGrids pH 7.5 at a Marchfeld coordinate; 20+ drinking-water features at Stephansplatz; the live AT generation mix). Findings, per the M0.8 mandate:
+
+1. **R6.1 pressure point found: the region adapter's format registry.** A region API's JSON shape is upstream-specific, so the adapter selects a named parser (`energy_charts_public_power`) from a registry via descriptor config. This is adapter-level code chosen by configuration — acceptable for now, but it is where bespoke code will try to creep in. If the registry grows past a handful of formats, replace it with a declarative extraction spec.
+2. **Live-contact lessons now encoded in code:** COG overview IFDs carry no geokeys (georeference derives from the full-res image); proj4js lacks `+proj=igh` (implemented in-repo, PROJ-verified); descriptor-declared `nodata` is essential — the file's own GDAL_NODATA tag was not readable. Health assertions caught every one of these before any user did, which is exactly their job (R8.1 vindicated in week one).
+3. **The A2 exit dry-run (WorldCover) is deferred to Phase 1:** the product ships as a VRT over 3°-tiled COGs, and the adapter reads single files. Multi-file mosaics (or materializing a mosaic) is a named Phase 1 work item; the categorical aggregation path is unit-tested but not yet live-proven.
+4. **Descriptor schema v1 is frozen** as of this review; future additions are additive, and descriptor-hash cache keys protect against silent shape drift.
+5. **Deviation to record:** health checks run only in Actions (R8.2 as amended); the browser reads the committed status for degraded badges and does not run assertions itself.
+
 ## 7. Phase 0 risks
 
 | Risk | Mitigation |

@@ -10,7 +10,7 @@
  *   sample <layer.yaml> <lon> <lat>   print raster metadata and a raw 5x5 pixel
  *                           grid around the coordinate (debugging aid)
  */
-import { readFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
 import { fromUrl } from 'geotiff';
 import proj4 from 'proj4';
@@ -144,14 +144,51 @@ async function sample(file: string, lon: number, lat: number): Promise<number> {
   return 0;
 }
 
+/**
+ * M0.6 health mode (R8.1–R8.3, R8.5): run every layer's assertion, write
+ * data/status/status.json (read by the client for degraded badges) and append
+ * to data/status/history.jsonl (git history answers "when did this break").
+ * Always exits 0 — failures are data, not a broken health run.
+ */
+async function health(files: string[]): Promise<number> {
+  const layers: Record<string, { ok: boolean; status: string; checkedAt: string; note?: string }> = {};
+  for (const file of files) {
+    const checkedAt = new Date().toISOString();
+    try {
+      const descriptor = loadDescriptorYaml(readFileSync(file, 'utf8'));
+      const engine = new LocalQueryEngine([descriptor], { io: makeIo(), adapters: defaultAdapters() });
+      const result = await engine.point(descriptor.id, descriptor.health_assertion.at);
+      const ok = checkAssertion(file, result, descriptor.health_assertion);
+      layers[descriptor.id] = { ok, status: result.status, checkedAt };
+    } catch (e) {
+      layers[file] = { ok: false, status: 'error', checkedAt, note: (e as Error).message };
+    }
+  }
+  mkdirSync('data/status', { recursive: true });
+  const snapshot = { generatedAt: new Date().toISOString(), layers };
+  writeFileSync('data/status/status.json', `${JSON.stringify(snapshot, null, 2)}\n`);
+  appendFileSync(
+    'data/status/history.jsonl',
+    `${JSON.stringify({
+      t: snapshot.generatedAt,
+      ok: Object.fromEntries(Object.entries(layers).map(([id, s]) => [id, s.ok])),
+    })}\n`,
+  );
+  const failing = Object.entries(layers).filter(([, s]) => !s.ok);
+  console.log(`health: ${Object.keys(layers).length - failing.length} ok, ${failing.length} failing`);
+  return 0;
+}
+
 const [mode, ...args] = process.argv.slice(2);
 if (mode === 'probe' && args.length > 0) {
   process.exit(await probe(args));
 } else if (mode === 'verify' && args.length > 0) {
   process.exit(await verify(args));
+} else if (mode === 'health' && args.length > 0) {
+  process.exit(await health(args));
 } else if (mode === 'sample' && args.length === 3) {
   process.exit(await sample(args[0] as string, Number(args[1]), Number(args[2])));
 } else {
-  console.error('usage: verify.ts probe <url...> | verify <layer.yaml...> | sample <layer.yaml> <lon> <lat>');
+  console.error('usage: verify.ts probe <url...> | verify <layer.yaml...> | health <layer.yaml...> | sample <layer.yaml> <lon> <lat>');
   process.exit(2);
 }

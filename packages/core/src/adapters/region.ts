@@ -22,10 +22,13 @@ import { tileToBBox } from '../tile.js';
 
 type FormatParser = (body: unknown) => AdapterOutcome;
 
+/** Series in /public_power that are loads or derived ratios, not generation. */
+const NON_GENERATION_SERIES = /^(load|residual load|renewable share|cross border)/i;
+
 /** Energy-Charts /public_power: latest non-null values per production type → share histogram. */
 function parseEnergyChartsPublicPower(body: unknown): AdapterOutcome {
   const data = body as { production_types?: Array<{ name: string; data: Array<number | null> }> };
-  const series = data.production_types ?? [];
+  const series = (data.production_types ?? []).filter((s) => !NON_GENERATION_SERIES.test(s.name));
   if (series.length === 0) return { kind: 'empty' };
   // Latest index where at least one series has a value.
   const len = Math.max(...series.map((s) => s.data.length));

@@ -88,8 +88,8 @@ describe('RegionAdapter', () => {
         const total = r.value.classes.reduce((s, c) => s + c.share, 0);
         expect(total).toBeCloseTo(1, 9);
         expect(r.value.classes[0]).toMatchObject({ label: 'Hydro run-of-river' });
-        expect(r.value.classes.map((c) => c.label)).not.toContain('Residual load');
-        expect(r.value.classes.map((c) => c.label)).not.toContain('Solar');
+        expect(r.value.classes.map((c) => c.label)).not.toContain('Residual load'); // not generation
+        expect(r.value.classes.map((c) => c.label)).not.toContain('Solar'); // null at latest index
       }
     }
   });

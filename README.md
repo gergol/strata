@@ -6,7 +6,7 @@ A personal geospatial exploration instrument. The question it answers:
 
 Breadth across domains — weather, subsurface, energy, traffic, history, wildlife, infrastructure — is the whole point. No single specialist app can answer a question that spans domains; Strata trades depth in any one of them for reach across all of them. Coverage is permanently uneven by design, hence the name: what you get is layers, not completeness.
 
-**Status: Phase 0 (foundations) in progress.** Milestone M0.1 — the contracts package (`packages/core`: descriptor schema, result envelope, tile math, engine interfaces) — is done and tested; the map client does not exist yet. The project is defined by three documents:
+**Status: Phase 0 complete — [live at gergol.github.io/strata](https://gergol.github.io/strata/).** Three live-verified layers (soil pH via SoilGrids COG, OSM drinking-water points via Overpass, the Austrian electricity generation mix via Energy-Charts), a MapLibre client with the worker-hosted query engine, and a 6-hourly health runner committing per-layer status to this repo. Next: Phase 1, cheap breadth. The project is defined by three documents:
 
 | Document | Contents |
 |---|---|
