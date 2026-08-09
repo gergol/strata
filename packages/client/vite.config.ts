@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
@@ -12,9 +15,17 @@ const buildInfo = {
   date: new Date().toISOString(),
 };
 
+/** Layer descriptors are repo content (`layers/*.yaml`); inline them at build time. */
+const layersDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../layers');
+const layerYamls = readdirSync(layersDir)
+  .filter((f) => f.endsWith('.yaml'))
+  .sort()
+  .map((f) => readFileSync(resolve(layersDir, f), 'utf8'));
+
 export default defineConfig({
   // Project pages are served from /<repo>/; the workflow sets STRATA_BASE=/strata/
   base: process.env.STRATA_BASE ?? '/',
+  worker: { format: 'es' },
   plugins: [
     svelte(),
     {
@@ -28,5 +39,6 @@ export default defineConfig({
   ],
   define: {
     __BUILD_INFO__: JSON.stringify(buildInfo),
+    __LAYER_YAMLS__: JSON.stringify(layerYamls),
   },
 });

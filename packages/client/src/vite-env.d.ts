@@ -7,3 +7,6 @@ declare const __BUILD_INFO__: {
   sha: string;
   date: string;
 };
+
+/** Raw contents of every layers/*.yaml, inlined at build time. */
+declare const __LAYER_YAMLS__: string[];
