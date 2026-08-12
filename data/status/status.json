@@ -1,20 +1,20 @@
 {
-  "generatedAt": "2026-08-12T00:39:20.092Z",
+  "generatedAt": "2026-08-12T06:46:46.198Z",
   "layers": {
     "grid_generation_mix": {
-      "ok": false,
-      "status": "error",
-      "checkedAt": "2026-08-12T00:39:14.123Z"
+      "ok": true,
+      "status": "ok",
+      "checkedAt": "2026-08-12T06:46:39.878Z"
     },
     "osm_drinking_water": {
       "ok": true,
       "status": "ok",
-      "checkedAt": "2026-08-12T00:39:15.809Z"
+      "checkedAt": "2026-08-12T06:46:41.662Z"
     },
     "soilgrids_ph": {
       "ok": true,
       "status": "ok",
-      "checkedAt": "2026-08-12T00:39:16.711Z"
+      "checkedAt": "2026-08-12T06:46:42.768Z"
     }
   }
 }
