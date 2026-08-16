@@ -34,8 +34,8 @@ terrain_analysis:
   grid_m: 10
 feature_style:
   kind: fill
-  color: "#71cf72"
-  opacity: 0.42
-  outline_color: "#b7efad"
+  color: "#00b86b"
+  opacity: 0.65
+  outline_color: "#008c50"
 params:
   materialization_kind: static_cog
