@@ -20,8 +20,12 @@
   let showSettings = $state(false);
   let layerSearch = $state('');
   let mapError = $state<string | null>(null);
+  let locationStatus = $state<'idle' | 'locating' | 'found' | 'error'>('idle');
+  let locationMessage = $state<string | null>(null);
   let mappedLayers = $state<Record<string, { name: string; count: number; color: string }>>({});
   let map: maplibregl.Map | undefined;
+  let targetMarker: maplibregl.Marker | undefined;
+  let locationRequestId = 0;
   const activeRasterOverlays = new Map<string, { layer: LayerSummary; opacity: number }>();
   const overlayLayers = $derived(
     layers.filter((layer): layer is LayerSummary & { overlay: NonNullable<LayerSummary['overlay']> } => layer.overlay !== undefined),
@@ -174,6 +178,63 @@
     syncRasterOverlay(layer.id);
   }
 
+  function selectTarget(nextTarget: LonLat, source: 'map' | 'location'): void {
+    const currentMap = map;
+    if (!currentMap) return;
+    clearMappedFeatures();
+    target = nextTarget;
+    epoch++;
+    targetMarker?.remove();
+    targetMarker = new maplibregl.Marker({ color: source === 'location' ? '#35a7ff' : '#e8a33d' })
+      .setLngLat(nextTarget)
+      .addTo(currentMap);
+    if (source === 'location') {
+      const nextZoom = Math.max(currentMap.getZoom(), 14);
+      currentMap.jumpTo({ center: nextTarget, zoom: nextZoom });
+      zoom = Math.round(nextZoom);
+    }
+  }
+
+  function locationErrorMessage(error: GeolocationPositionError): string {
+    if (error.code === error.PERMISSION_DENIED) return 'Location permission was denied. Allow it in your browser or click the map instead.';
+    if (error.code === error.POSITION_UNAVAILABLE) return 'Your current location is unavailable. Try again or click the map instead.';
+    if (error.code === error.TIMEOUT) return 'Finding your location timed out. Try again or click the map instead.';
+    return 'Your current location could not be determined. Try again or click the map instead.';
+  }
+
+  function requestCurrentLocation(): void {
+    const currentMap = map;
+    const requestId = ++locationRequestId;
+    if (!currentMap || !navigator.geolocation) {
+      locationStatus = 'error';
+      locationMessage = 'Location is not supported by this browser. Click the map to choose a place.';
+      return;
+    }
+    locationStatus = 'locating';
+    locationMessage = 'Finding your location…';
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (requestId !== locationRequestId || map !== currentMap) return;
+        const nextTarget: LonLat = [position.coords.longitude, position.coords.latitude];
+        if (!nextTarget.every(Number.isFinite)) {
+          locationStatus = 'error';
+          locationMessage = 'Your browser returned an invalid location. Click the map to choose a place.';
+          return;
+        }
+        selectTarget(nextTarget, 'location');
+        const accuracy = Math.max(1, Math.round(position.coords.accuracy));
+        locationStatus = 'found';
+        locationMessage = `Current location selected (within ${accuracy} m).`;
+      },
+      (error) => {
+        if (requestId !== locationRequestId || map !== currentMap) return;
+        locationStatus = 'error';
+        locationMessage = locationErrorMessage(error);
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    );
+  }
+
   onMount(() => {
     const mountedMap = new maplibregl.Map({
       container: mapContainer,
@@ -184,6 +245,7 @@
     });
     map = mountedMap;
     mountedMap.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+    requestCurrentLocation();
     // A silently gray map violates our own R5.2 — say what failed.
     mountedMap.on('error', (e) => {
       const msg = e.error?.message ?? 'unknown map error';
@@ -195,19 +257,20 @@
       for (const layerId of overlayData.keys()) syncFeatureOverlay(layerId);
       for (const layerId of activeRasterOverlays.keys()) syncRasterOverlay(layerId);
     });
-    let marker: maplibregl.Marker | undefined;
     mountedMap.on('click', (e) => {
-      clearMappedFeatures();
-      target = [e.lngLat.lng, e.lngLat.lat];
-      epoch++;
-      marker?.remove();
-      marker = new maplibregl.Marker({ color: '#e8a33d' }).setLngLat(e.lngLat).addTo(mountedMap);
+      locationRequestId++;
+      locationStatus = 'idle';
+      locationMessage = null;
+      selectTarget([e.lngLat.lng, e.lngLat.lat], 'map');
     });
     mountedMap.on('moveend', () => {
       zoom = Math.round(mountedMap.getZoom());
     });
     void engine.layers().then((l) => (layers = l));
     return () => {
+      locationRequestId++;
+      targetMarker?.remove();
+      targetMarker = undefined;
       mountedMap.remove();
       if (map === mountedMap) map = undefined;
     };
@@ -216,6 +279,29 @@
 
 <div class="app">
   <div class="map" bind:this={mapContainer}>
+    <button
+      class:locating={locationStatus === 'locating'}
+      class="locate-button"
+      type="button"
+      onclick={requestCurrentLocation}
+      disabled={locationStatus === 'locating'}
+      aria-label={locationStatus === 'locating' ? 'Finding current location' : 'Use current location'}
+      aria-busy={locationStatus === 'locating'}
+      title="Use current location"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="5"></circle>
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
+      </svg>
+    </button>
+    {#if locationMessage}
+      <div
+        class:error={locationStatus === 'error'}
+        class="location-message"
+        role={locationStatus === 'error' ? 'alert' : 'status'}
+        aria-live="polite"
+      >{locationMessage}</div>
+    {/if}
     {#if mapError}
       <div class="map-error" role="alert">map layer failed to load: {mapError}</div>
     {/if}
@@ -339,6 +425,67 @@
     border-radius: 6px;
     padding: 0.4rem 0.6rem;
     font-size: 0.8rem;
+  }
+  .locate-button {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    z-index: 10;
+    width: 2.4rem;
+    height: 2.4rem;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    border: 1px solid #343c47;
+    border-radius: 6px;
+    background: rgb(20 23 28 / 94%);
+    color: #d7dce2;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+  }
+  .locate-button:hover {
+    background: #252c35;
+  }
+  .locate-button:focus-visible {
+    outline: 2px solid #7ab8f5;
+    outline-offset: 2px;
+  }
+  .locate-button:disabled {
+    cursor: wait;
+    color: #7ab8f5;
+  }
+  .locate-button svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+  .locate-button.locating svg {
+    animation: locate-pulse 0.9s ease-in-out infinite alternate;
+  }
+  .location-message {
+    position: absolute;
+    top: 0.6rem;
+    left: 3.5rem;
+    z-index: 9;
+    max-width: min(24rem, calc(100% - 7.5rem));
+    border: 1px solid #343c47;
+    border-radius: 6px;
+    background: rgb(20 23 28 / 94%);
+    color: #d7dce2;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.75rem;
+  }
+  .location-message.error {
+    border-color: #6f3535;
+    color: #efb5b5;
+  }
+  @keyframes locate-pulse {
+    to { opacity: 0.35; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .locate-button.locating svg { animation: none; }
   }
   .map-feature-summary {
     position: absolute;

@@ -62,13 +62,15 @@ async function mockExternalData(page: Page): Promise<void> {
 }
 
 test.beforeEach(async ({ page }) => {
+  await page.context().setGeolocation({ latitude: 48.2082, longitude: 16.3738, accuracy: 12 });
+  await page.context().grantPermissions(['geolocation'], { origin: 'http://127.0.0.1:4173' });
   await mockExternalData(page);
 });
 
 test('queries the materialized energy and Overpass layers through the real worker', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('18 layers loaded.')).toBeVisible();
+  await expect(page.getByText('17 of 17 query layers')).toBeVisible();
 
   const canvas = page.locator('.maplibregl-canvas');
   await expect(canvas).toBeVisible();
@@ -90,6 +92,69 @@ test('queries the materialized energy and Overpass layers through the real worke
   await expect(page.locator('.map-feature-summary')).toHaveText('1 map point · Drinking water points');
   await waterPanel.getByRole('button', { name: /area stats/ }).click();
   await expect(waterPanel.getByText('count', { exact: true })).toBeVisible();
+});
+
+test('selects and centers the current location on startup and from the map control', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  await page.goto('/');
+
+  await expect(page.locator('.coords')).toContainText('48.20820, 16.37380 · z14');
+  await expect(page.getByRole('status')).toHaveText('Current location selected (within 12 m).');
+  const locate = page.getByRole('button', { name: 'Use current location' });
+  await expect(locate).toHaveAttribute('aria-busy', 'false');
+
+  const mapBox = await page.locator('.map').boundingBox();
+  const markerBox = await page.locator('.maplibregl-marker').boundingBox();
+  expect(mapBox).not.toBeNull();
+  expect(markerBox).not.toBeNull();
+  expect(Math.abs((markerBox!.x + markerBox!.width / 2) - (mapBox!.x + mapBox!.width / 2))).toBeLessThan(2);
+  // MapLibre's stock pin places its visual tip 6.5 px above the element edge.
+  expect(Math.abs((markerBox!.y + markerBox!.height - 6.5) - (mapBox!.y + mapBox!.height / 2))).toBeLessThan(2);
+
+  await page.locator('.maplibregl-canvas').click({ position: { x: 80, y: 80 } });
+  await expect(page.locator('.coords')).not.toContainText('48.20820, 16.37380');
+  await expect(page.getByText('Current location selected')).toHaveCount(0);
+  await locate.click();
+  await expect(page.locator('.coords')).toContainText('48.20820, 16.37380 · z14');
+  expect(consoleErrors).toEqual([]);
+});
+
+test('reports denied location permission and preserves map-click selection', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) => error({
+          code: 1,
+          message: 'denied for test',
+          PERMISSION_DENIED: 1,
+          POSITION_UNAVAILABLE: 2,
+          TIMEOUT: 3,
+        } as GeolocationPositionError),
+      },
+    });
+  });
+  await page.goto('/');
+
+  await expect(page.getByRole('alert')).toContainText('Location permission was denied.');
+  await expect(page.getByRole('button', { name: 'Use current location' })).toBeEnabled();
+  await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('.coords')).toBeVisible();
+});
+
+test('reports unsupported geolocation without blocking map use', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: undefined });
+  });
+  await page.goto('/');
+
+  await expect(page.getByRole('alert')).toContainText('Location is not supported by this browser.');
+  await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
+  await expect(page.locator('.coords')).toBeVisible();
 });
 
 test('renders a descriptor-driven raster overlay with opacity and legend controls', async ({ page }) => {
@@ -158,7 +223,7 @@ test('stores and removes BYOK values without rendering the stored value', async 
   const input = row.getByLabel('NASA FIRMS');
   await input.fill('synthetic-test-key');
   await row.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByRole('status')).toHaveText('Key saved only in this browser.');
+  await expect(page.getByText('Key saved only in this browser.', { exact: true })).toBeVisible();
   await expect(input).toHaveValue('');
   await expect(input).toHaveAttribute('placeholder', 'saved');
   expect(await page.evaluate(() => localStorage.getItem('strata:api-key:firms'))).toBe('synthetic-test-key');
@@ -179,6 +244,10 @@ test('keeps map and controls usable in the narrow layout', async ({ page }) => {
   expect(mapBox?.height).toBeGreaterThan(300);
   expect(mapBox?.height).toBeLessThan(430);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const locate = page.getByRole('button', { name: 'Use current location' });
+  await locate.focus();
+  await locate.press('Enter');
+  await expect(page.locator('.coords')).toContainText('48.20820, 16.37380');
   await expect(page.getByRole('checkbox', { name: 'WorldCover 2021 (visual)' })).toBeVisible();
   const settings = page.getByRole('button', { name: 'Settings' });
   await settings.focus();
