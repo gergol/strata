@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { LayerResult, LayerSummary, LonLat, QueryEngine } from '@strata/core';
-  import { lonLatToTile } from '@strata/core';
+  import { lonLatToTile } from '@strata/core/tile';
 
   let {
     engine,

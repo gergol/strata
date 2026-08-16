@@ -101,4 +101,17 @@ export default defineConfig({
     __BUILD_INFO__: JSON.stringify(buildInfo),
     __LAYER_YAMLS__: JSON.stringify(layerYamls),
   },
+  build: {
+    // MapLibre is intentionally large; isolate it so application code remains
+    // independently cacheable and enforce the actual budgets after build.
+    chunkSizeWarningLimit: 1400,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/node_modules/maplibre-gl/')) return 'maplibre';
+          return undefined;
+        },
+      },
+    },
+  },
 });
