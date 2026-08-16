@@ -304,6 +304,10 @@ The catalogue now contains 31 layers, 30 of them queryable. This package intenti
 
 The first pack adds modelled 2 m temperature, consolidated European AQI, and European ragweed-pollen forecasts from Open-Meteo (with CAMS attribution where applicable). All three pass live data and production-origin CORS checks. The catalogue now contains 34 layers, 33 queryable. M1.6 precomputed/quadkey materializations is next.
 
+**M1.6 — Precomputed indexes and reproducible bulk materialization (2026-08-16).** The A6 adapter now reads compact same-origin indexes produced from already tile-shaped bulk sources. It joins z16 quadkeys directly, computes honest test-weighted means for coarser tiles, and transforms WGS84 clicks into pinned EPSG:3035 kilometre-cell identifiers. Static materializations have a separate browser-health contract from frequently refreshed feeds: the deployed asset must be same-origin, valid JSON, and non-empty, while source period and artifact hash are pinned in committed provenance.
+
+The first proofs are three Ookla fixed-broadband metrics for Vienna from the official 2026 Q1 z16 Parquet release (download, upload, latency) and Eurostat GISCO 2021 census population per 1 km² Vienna cell. Reproducible DuckDB recipes reduce the 349 MB/168 MB global inputs to 319 kB/32 kB local indexes. PMTiles was deliberately not added for these 3,002 records: a second tile container and decoder would add complexity without reducing the one-file same-origin lookup; large global PMTiles remain the Phase 2 derivation-toolchain case. The catalogue now contains 38 layers, 37 queryable. M1.7 GBFS is next.
+
 **Point-mode geolocation (2026-08-16).** The primary interaction now fulfills requirements §2 directly: on startup the browser requests the current location, selects it as the active query coordinate, centers the map, and shows a distinct marker. A keyboard-accessible map control repeats the lookup. Permission denial, timeout, unavailable positioning, and unsupported browsers are announced without blocking map-click selection; a late location response cannot overwrite a newer manual choice.
 
 ### Phase 2 — differentiators
