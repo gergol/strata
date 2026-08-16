@@ -49,6 +49,10 @@ Layers that call the same provider must share `rate_limit.group`. The limiter th
 
 The OSM POI pack uses bounded `nwr[...]{{spatial}};` templates so nodes, ways, and relations are handled uniformly. Point lists use `out center` and remain explicitly capped; tile counts use `out count` and therefore stay exact even for dense features. Add ordinary POIs to `layers/osm_pois.yaml`; provider defaults, attribution, and politeness settings should not be repeated.
 
+Every `bbox_vector` descriptor declares `params.protocol: overpass | sparql`; protocol selection is explicit rather than inferred from the endpoint. A SPARQL descriptor supplies a trusted WHERE-body fragment in `params.sparql_query` with exactly one `{{spatial}}` placeholder and a required `?item` variable. The adapter injects bounded `wikibase:around` or `wikibase:box` geography, labels, deterministic limits, result shape, and exact `COUNT(DISTINCT ?item)` tile aggregation. Full queries, nested `SERVICE`, query-form keywords, and update operations are rejected at registration.
+
+Add Wikidata geography layers to `layers/wikidata_places.yaml`. Prefer a precise direct `wdt:P31` class and an empirically bounded radius; broad subclass-property paths can exceed the public query service's hard timeout. State direct-class semantics and Wikidata's uneven coordinate/completeness coverage in provenance rather than implying an exhaustive real-world inventory. All WDQS layers share the existing `wikidata-query-service` limiter group, one request slot, and conservative spacing. Point feature lists are capped and visibly labelled when truncated; tile counts remain exact.
+
 ## 4. Prove the browser boundary
 
 For `browser_access: direct`, test from the production origin `https://gergol.github.io`, not only with curl or Node:
@@ -97,6 +101,8 @@ npx tsx packages/runner/src/verify.ts verify layers/your_layer.yaml
 The final command performs the live assertion and browser-access checks. For a new materialized endpoint, deploy it to a preview or Pages first; the production smoke job runs the same command after deployment.
 
 For a descriptor pack, append `#layer_id` to verify one entry (for example `layers/osm_pois.yaml#osm_drinking_water`). Deployment smoke uses one representative canary per shared provider; the scheduled health workflow expands every pack entry and remains the exhaustive per-layer check.
+
+For Wikidata, verify every new layer's positive canary individually before relying on the representative deployment smoke. The public WDQS endpoint has a 60-second hard query limit and may return `429` with `Retry-After`; keep live development probes sequential and sparse. Browser requests use ordinary GET plus `Accept: application/sparql-results+json`, while the runner identifies itself with Strata's contact-bearing user agent.
 
 ## 7. Review the change boundary
 
