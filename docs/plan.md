@@ -290,6 +290,8 @@ This completes the standalone raster branch of M1.1 and deliberately stops befor
 
 Overpass point lists remain capped and visibly report truncation; tile counts now use the provider's exact `out count` result instead of silently presenting a capped list length. The client adds name/domain search with a live result count so 17 query layers remain usable on desktop and mobile. Hourly energy-materialization deploys verify only that materialized layer; code-push smoke selects one canary per shared provider, while the six-hour health schedule remains exhaustive. This avoids redundant deployment load on the volunteer Overpass service. Adding a conventional POI is now one compact pack entry rather than a duplicated full descriptor.
 
+**Point-mode geolocation (2026-08-16).** The primary interaction now fulfills requirements §2 directly: on startup the browser requests the current location, selects it as the active query coordinate, centers the map, and shows a distinct marker. A keyboard-accessible map control repeats the lookup. Permission denial, timeout, unavailable positioning, and unsupported browsers are announced without blocking map-click selection; a late location response cannot overwrite a newer manual choice.
+
 ### Phase 2 — differentiators
 *Goal: the layers nobody has made pretty. All request/response or fully local; still no standing infrastructure.*
 
