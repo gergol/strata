@@ -12,6 +12,7 @@
  */
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 import { fromUrl } from 'geotiff';
 import proj4 from 'proj4';
 import {
@@ -23,14 +24,18 @@ import {
   isOk,
 } from '@strata/core';
 import type { IO, LayerResult } from '@strata/core';
-import { checkBrowserAccess, type FetchObservation } from './browser-access.js';
+import { APP_ORIGIN, checkBrowserAccess, type FetchObservation } from './browser-access.js';
 
 const USER_AGENT = 'Strata-verify/0.1 (+https://github.com/gergol/strata)';
 
-function makeIo(observations: FetchObservation[] = []): IO {
+export function makeIo(observations: FetchObservation[] = []): IO {
   const identifyingFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
     headers.set('User-Agent', USER_AGENT);
+    // CORS-capable servers commonly emit ACAO only when the request carries an
+    // Origin header. Node does not add one, so reproduce the browser request
+    // boundary explicitly before inspecting the response.
+    headers.set('Origin', APP_ORIGIN);
     const response = await fetch(input, { ...init, headers });
     observations.push({
       url: String(input),
@@ -193,16 +198,18 @@ async function health(files: string[]): Promise<number> {
   return 0;
 }
 
-const [mode, ...args] = process.argv.slice(2);
-if (mode === 'probe' && args.length > 0) {
-  process.exit(await probe(args));
-} else if (mode === 'verify' && args.length > 0) {
-  process.exit(await verify(args));
-} else if (mode === 'health' && args.length > 0) {
-  process.exit(await health(args));
-} else if (mode === 'sample' && args.length === 3) {
-  process.exit(await sample(args[0] as string, Number(args[1]), Number(args[2])));
-} else {
+async function main(argv: string[]): Promise<number> {
+  const [mode, ...args] = argv;
+  if (mode === 'probe' && args.length > 0) return probe(args);
+  if (mode === 'verify' && args.length > 0) return verify(args);
+  if (mode === 'health' && args.length > 0) return health(args);
+  if (mode === 'sample' && args.length === 3) {
+    return sample(args[0] as string, Number(args[1]), Number(args[2]));
+  }
   console.error('usage: verify.ts probe <url...> | verify <layer.yaml...> | health <layer.yaml...> | sample <layer.yaml> <lon> <lat>');
-  process.exit(2);
+  return 2;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exit(await main(process.argv.slice(2)));
 }
