@@ -9,7 +9,7 @@
  * Attribution, provenance, unit, and fetch metadata are stamped here, from the
  * descriptor — never by adapters (R6.4, plan §4.1).
  */
-import type { Adapter, AdapterOutcome } from './adapter.js';
+import { AdapterError, type Adapter, type AdapterOutcome } from './adapter.js';
 import type { AdapterId, LayerDescriptor } from './descriptor.js';
 import { descriptorHash, parseDescriptor } from './descriptor.js';
 import type { LayerResult, OkResult } from './envelope.js';
@@ -176,6 +176,7 @@ export class LocalQueryEngine implements QueryEngine {
       outcome = await exec(adapter, limitedIo);
     } catch (e) {
       if (e instanceof CircuitOpenError) return queryError('circuit_open', e.message);
+      if (e instanceof AdapterError) return queryError(e.kind, e.message);
       return queryError('upstream', e instanceof Error ? e.message : String(e));
     }
 

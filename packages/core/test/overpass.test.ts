@@ -24,6 +24,7 @@ const descriptor = parseDescriptor({
   coverage: 'global',
   provenance_note: 'OSM',
   params: {
+    protocol: 'overpass',
     overpass_query: 'node[amenity=drinking_water]{{spatial}};',
     point_radius_m: 500,
     feature_cap: 3,
@@ -72,12 +73,11 @@ describe('OverpassAdapter query construction', () => {
     expect(decoded).toContain(`(${s},${w},${n},${e})`);
   });
 
-  it('rejects a descriptor without the {{spatial}} placeholder', async () => {
-    const bad = parseDescriptor({
+  it('rejects a descriptor without the {{spatial}} placeholder at registration', () => {
+    expect(() => parseDescriptor({
       ...JSON.parse(JSON.stringify(descriptor)),
-      params: { overpass_query: 'node[amenity=x];' },
-    });
-    await expect(new OverpassAdapter().point(bad, [0, 0], ioReturning([]))).rejects.toThrow(/spatial/);
+      params: { protocol: 'overpass', overpass_query: 'node[amenity=x];' },
+    })).toThrow(/spatial/);
   });
 });
 

@@ -62,6 +62,7 @@ export type {
 export type { CacheEntry, KVCache, IO } from './io.js';
 export type { LayerSummary, QueryEngine, RasterOverlaySummary } from './engine.js';
 
+export { AdapterError } from './adapter.js';
 export type { Adapter, AdapterOutcome } from './adapter.js';
 export { RateLimiter, CircuitOpenError } from './limiter.js';
 export type { LimiterClock, LimiterOptions, LayerRateConfig } from './limiter.js';
@@ -71,12 +72,14 @@ export type { LocalEngineDeps } from './local-engine.js';
 export { CogAdapter } from './adapters/cog.js';
 export type { CogAdapterDeps } from './adapters/cog.js';
 export { OverpassAdapter } from './adapters/overpass.js';
+export { SparqlAdapter } from './adapters/sparql.js';
+export { BBoxVectorAdapter } from './adapters/bbox-vector.js';
 export { RegionAdapter, parseEnergyChartsPublicPower } from './adapters/region.js';
 export { findContainingFeature, pointInFeature } from './geometry.js';
 export type { GeoJsonFeature, GeoJsonFeatureCollection } from './geometry.js';
 
 import { CogAdapter as CogAdapterClass } from './adapters/cog.js';
-import { OverpassAdapter as OverpassAdapterClass } from './adapters/overpass.js';
+import { BBoxVectorAdapter as BBoxVectorAdapterClass } from './adapters/bbox-vector.js';
 import { RegionAdapter as RegionAdapterClass } from './adapters/region.js';
 import type { Adapter } from './adapter.js';
 import type { AdapterId } from './descriptor.js';
@@ -85,7 +88,7 @@ import type { AdapterId } from './descriptor.js';
 export function defaultAdapters(): Partial<Record<AdapterId, Adapter>> {
   return {
     cog: new CogAdapterClass(),
-    bbox_vector: new OverpassAdapterClass(),
+    bbox_vector: new BBoxVectorAdapterClass(),
     region: new RegionAdapterClass(),
   };
 }

@@ -25,6 +25,7 @@ defaults:
   browser_access: direct
   search_beyond_tile: true
   params:
+    protocol: overpass
     point_radius_m: 300
     feature_cap: 100
 

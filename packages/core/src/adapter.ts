@@ -9,7 +9,7 @@
  */
 import type { LayerDescriptor } from './descriptor.js';
 import type { AggregationId } from './descriptor.js';
-import type { ResultValue, ResultBasis } from './envelope.js';
+import type { ErrorKind, ResultValue, ResultBasis } from './envelope.js';
 import type { IO } from './io.js';
 import type { LonLat, Tile } from './tile.js';
 
@@ -26,6 +26,14 @@ export type AdapterOutcome =
     }
   | { kind: 'empty' }
   | { kind: 'no_coverage' };
+
+/** A provider failure whose stable UI/error-envelope class is known by the adapter. */
+export class AdapterError extends Error {
+  constructor(readonly kind: ErrorKind, message: string) {
+    super(message);
+    this.name = 'AdapterError';
+  }
+}
 
 export interface Adapter {
   point(layer: LayerDescriptor, at: LonLat, io: IO): Promise<AdapterOutcome>;

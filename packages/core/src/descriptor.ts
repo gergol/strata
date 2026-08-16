@@ -279,6 +279,48 @@ export const layerDescriptorSchema = z
         message: 'expect_overlay requires overlay mode',
       });
     }
+    if (d.adapter === 'bbox_vector') {
+      const protocol = d.params?.['protocol'];
+      if (protocol !== 'overpass' && protocol !== 'sparql') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['params', 'protocol'],
+          message: "bbox_vector layers must declare params.protocol as 'overpass' or 'sparql'",
+        });
+      }
+      const key = protocol === 'sparql' ? 'sparql_query' : 'overpass_query';
+      const template = d.params?.[key];
+      if (typeof template !== 'string' || !template.includes('{{spatial}}')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['params', key],
+          message: `${key} must contain a {{spatial}} placeholder`,
+        });
+      } else if (protocol === 'sparql') {
+        const placeholders = template.match(/\{\{[^}]+\}\}/g) ?? [];
+        if (placeholders.length !== 1 || placeholders[0] !== '{{spatial}}') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', key],
+            message: 'sparql_query may contain only the {{spatial}} placeholder',
+          });
+        }
+        if (!template.includes('?item')) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', key],
+            message: 'sparql_query must constrain the injected ?item variable',
+          });
+        }
+        if (/\b(?:SELECT|ASK|CONSTRUCT|DESCRIBE|SERVICE|LOAD|INSERT|DELETE|CLEAR|CREATE|DROP|MOVE|COPY|ADD)\b/i.test(template)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', key],
+            message: 'sparql_query is a WHERE-body fragment; nested queries, services, and update operations are not allowed',
+          });
+        }
+      }
+    }
   });
 
 export type LayerDescriptor = z.infer<typeof layerDescriptorSchema>;

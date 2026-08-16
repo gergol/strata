@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Adapter, AdapterOutcome } from '../src/adapter.js';
+import { AdapterError, type Adapter, type AdapterOutcome } from '../src/adapter.js';
 import type { IO } from '../src/io.js';
 import { LocalQueryEngine } from '../src/local-engine.js';
 import { MemoryCache } from '../src/memory-cache.js';
@@ -181,6 +181,34 @@ describe('gates (R5.1–R5.3)', () => {
 });
 
 describe('failure handling (R7.6)', () => {
+  it('preserves adapter error taxonomy in the public envelope', async () => {
+    const w = makeWorld();
+    const engine = new LocalQueryEngine([w.descriptor], {
+      io: w.io,
+      adapters: {
+        cog: {
+          async point() {
+            throw new AdapterError('schema', 'malformed provider response');
+          },
+          async tile() {
+            throw new AdapterError('rate_limited', 'provider quota exceeded');
+          },
+        },
+      },
+    });
+
+    await expect(engine.point('test_ph', [16.37, 48.21])).resolves.toMatchObject({
+      status: 'error',
+      kind: 'schema',
+      message: 'malformed provider response',
+    });
+    await expect(engine.tile('test_ph', { z: 12, x: 2234, y: 1420 })).resolves.toMatchObject({
+      status: 'error',
+      kind: 'rate_limited',
+      message: 'provider quota exceeded',
+    });
+  });
+
   it('maps upstream failures to error envelopes, then circuit-opens without upstream calls', async () => {
     const w = makeWorld();
     w.setUpstream('fail');

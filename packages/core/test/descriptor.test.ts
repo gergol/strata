@@ -61,6 +61,30 @@ describe('descriptor validation (R6.2, R6.3, R8.4)', () => {
     expect(d.rate_limit.group).toBe('overpass-api-de');
   });
 
+  it('strictly validates bbox-vector protocol templates at registration', () => {
+    const bbox = {
+      ...valid,
+      id: 'wikidata_museums',
+      adapter: 'bbox_vector',
+      value_type: 'feature',
+      unit: undefined,
+      native_unit: undefined,
+      scale_factor: undefined,
+      nodata: undefined,
+      params: {
+        protocol: 'sparql',
+        sparql_query: '{{spatial}} FILTER EXISTS { ?item wdt:P31 wd:Q33506 }',
+      },
+    };
+    expect(parseDescriptor(bbox).params?.['protocol']).toBe('sparql');
+    failsMentioning({ ...bbox, params: { ...bbox.params, protocol: undefined } }, 'params.protocol');
+    failsMentioning({ ...bbox, params: { ...bbox.params, sparql_query: 'SELECT * WHERE { ?item ?p ?o }' } }, 'spatial');
+    failsMentioning(
+      { ...bbox, params: { ...bbox.params, sparql_query: '{{spatial}} SERVICE <https://example.test> { ?item ?p ?o }' } },
+      'nested queries, services, and update operations',
+    );
+  });
+
   it('rejects a descriptor missing licence, naming the field (R6.2)', () => {
     const { licence: _licence, ...rest } = valid;
     failsMentioning(rest, 'licence', 'soilgrids_ph');
@@ -296,7 +320,7 @@ defaults:
   attribution: OpenStreetMap contributors
   coverage: global
   provenance_note: Crowdsourced test data
-  params: { point_radius_m: 300, feature_cap: 100 }
+  params: { protocol: overpass, point_radius_m: 300, feature_cap: 100 }
 layers:
   - id: osm_benches
     name: Benches
@@ -317,6 +341,7 @@ layers:
       min_interval_ms: 1000,
     });
     expect(descriptors[0]?.params).toEqual({
+      protocol: 'overpass',
       point_radius_m: 300,
       feature_cap: 100,
       overpass_query: 'nwr[amenity=bench]{{spatial}};',
