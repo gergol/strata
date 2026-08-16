@@ -43,6 +43,14 @@ function regionParams(params: Record<string, unknown> | undefined): string[] {
   return value as string[];
 }
 
+function lookbackHours(params: Record<string, unknown> | undefined): number {
+  const value = params?.['materialize_lookback_hours'] ?? 0;
+  if (!Number.isInteger(value) || Number(value) < 0 || Number(value) > 168) {
+    throw new Error('params.materialize_lookback_hours must be an integer from 0 to 168');
+  }
+  return Number(value);
+}
+
 function latestSourceTimestamp(payload: unknown): number {
   if (typeof payload !== 'object' || payload === null) throw new Error('Energy-Charts response must be an object');
   const timestamps = (payload as { unix_seconds?: unknown }).unix_seconds;
@@ -66,6 +74,7 @@ export async function materializeLayer(
     throw new Error('params.materialize_source_endpoint must contain {{region}}');
   }
   const regions = regionParams(descriptor.params);
+  const sourceLookbackHours = lookbackHours(descriptor.params);
   const maxSourceAgeMs = Number(descriptor.params?.['max_source_age_ms'] ?? DEFAULT_MAX_SOURCE_AGE_MS);
   if (!Number.isFinite(maxSourceAgeMs) || maxSourceAgeMs <= 0) throw new Error('params.max_source_age_ms must be positive');
 
@@ -75,7 +84,12 @@ export async function materializeLayer(
   mkdirSync(outputDir, { recursive: true });
 
   for (const region of regions) {
-    const source = sourceTemplate.replaceAll('{{region}}', region);
+    const sourceUrl = new URL(sourceTemplate.replaceAll('{{region}}', region));
+    if (sourceLookbackHours > 0) {
+      const start = new Date(now() - sourceLookbackHours * 3_600_000).toISOString().slice(0, 10);
+      sourceUrl.searchParams.set('start', start);
+    }
+    const source = sourceUrl.toString();
     const response = await fetchImpl(source, {
       headers: { Accept: 'application/json', 'User-Agent': USER_AGENT },
       signal: AbortSignal.timeout(30_000),

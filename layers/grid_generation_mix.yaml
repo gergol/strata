@@ -33,5 +33,7 @@ params:
   format: energy_charts_public_power
   materialize_source_endpoint: https://api.energy-charts.info/public_power?country={{region}}
   materialize_regions: [at]
+  # Avoid the provider's empty implicit current-day window around local midnight.
+  materialize_lookback_hours: 12
   max_source_age_ms: 21600000
   max_materialized_age_ms: 7200000
