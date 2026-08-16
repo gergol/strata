@@ -23,14 +23,21 @@ import {
   isOk,
 } from '@strata/core';
 import type { IO, LayerResult } from '@strata/core';
+import { checkBrowserAccess, type FetchObservation } from './browser-access.js';
 
 const USER_AGENT = 'Strata-verify/0.1 (+https://github.com/gergol/strata)';
 
-function makeIo(): IO {
+function makeIo(observations: FetchObservation[] = []): IO {
   const identifyingFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
     headers.set('User-Agent', USER_AGENT);
-    return fetch(input, { ...init, headers });
+    const response = await fetch(input, { ...init, headers });
+    observations.push({
+      url: String(input),
+      status: response.status,
+      accessControlAllowOrigin: response.headers.get('access-control-allow-origin'),
+    });
+    return response;
   }) as typeof fetch;
   return {
     fetch: identifyingFetch,
@@ -92,12 +99,16 @@ async function verify(files: string[]): Promise<number> {
   for (const file of files) {
     try {
       const descriptor = loadDescriptorYaml(readFileSync(file, 'utf8'));
+      const observations: FetchObservation[] = [];
       const engine = new LocalQueryEngine([descriptor], {
-        io: makeIo(),
+        io: makeIo(observations),
         adapters: defaultAdapters(),
       });
       const result = await engine.point(descriptor.id, descriptor.health_assertion.at);
-      const pass = checkAssertion(file, result, descriptor.health_assertion);
+      const livePass = checkAssertion(file, result, descriptor.health_assertion);
+      const browser = await checkBrowserAccess(descriptor, observations);
+      const pass = livePass && browser.ok;
+      console.log(`${file}: browser ${browser.ok ? 'PASS' : `FAIL — ${browser.note}`}`);
       console.log(`${file}: ${pass ? 'PASS' : 'FAIL'}`);
       if (!pass) failures++;
     } catch (e) {
@@ -151,17 +162,20 @@ async function sample(file: string, lon: number, lat: number): Promise<number> {
  * Always exits 0 — failures are data, not a broken health run.
  */
 async function health(files: string[]): Promise<number> {
-  const layers: Record<string, { ok: boolean; status: string; checkedAt: string; note?: string }> = {};
+  const layers: Record<string, { ok: boolean; browserOk: boolean; status: string; checkedAt: string; note?: string }> = {};
   for (const file of files) {
     const checkedAt = new Date().toISOString();
     try {
       const descriptor = loadDescriptorYaml(readFileSync(file, 'utf8'));
-      const engine = new LocalQueryEngine([descriptor], { io: makeIo(), adapters: defaultAdapters() });
+      const observations: FetchObservation[] = [];
+      const engine = new LocalQueryEngine([descriptor], { io: makeIo(observations), adapters: defaultAdapters() });
       const result = await engine.point(descriptor.id, descriptor.health_assertion.at);
-      const ok = checkAssertion(file, result, descriptor.health_assertion);
-      layers[descriptor.id] = { ok, status: result.status, checkedAt };
+      const liveOk = checkAssertion(file, result, descriptor.health_assertion);
+      const browser = await checkBrowserAccess(descriptor, observations);
+      const entry = { ok: liveOk && browser.ok, browserOk: browser.ok, status: result.status, checkedAt };
+      layers[descriptor.id] = browser.note ? { ...entry, note: browser.note } : entry;
     } catch (e) {
-      layers[file] = { ok: false, status: 'error', checkedAt, note: (e as Error).message };
+      layers[file] = { ok: false, browserOk: false, status: 'error', checkedAt, note: (e as Error).message };
     }
   }
   mkdirSync('data/status', { recursive: true });

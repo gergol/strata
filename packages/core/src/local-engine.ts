@@ -189,6 +189,7 @@ export class LocalQueryEngine implements QueryEngine {
       provenance: d.provenance_note,
     };
     if (outcome.region !== undefined) ok.region = outcome.region;
+    if (outcome.sourceUpdatedAt !== undefined) ok.sourceUpdatedAt = outcome.sourceUpdatedAt;
     return ok;
   }
 }

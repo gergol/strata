@@ -10,9 +10,9 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
  * from the GitHub Actions environment; locally they fall back to "dev".
  */
 const buildInfo = {
-  number: process.env.GITHUB_RUN_NUMBER ?? 'dev',
-  sha: (process.env.GITHUB_SHA ?? 'local').slice(0, 7),
-  date: new Date().toISOString(),
+  number: process.env.STRATA_BUILD_NUMBER ?? process.env.GITHUB_RUN_NUMBER ?? 'dev',
+  sha: (process.env.STRATA_BUILD_SHA ?? process.env.GITHUB_SHA ?? 'local').slice(0, 7),
+  date: process.env.STRATA_BUILD_DATE ?? new Date().toISOString(),
 };
 
 /** Layer descriptors are repo content (`layers/*.yaml`); inline them at build time. */

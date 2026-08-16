@@ -2,6 +2,9 @@ name: pages
 on:
   push:
     branches: [main]
+  schedule:
+    # Refresh browser-safe materializations without creating data commits.
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -26,9 +29,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - id: build-info
+        name: Resolve stable functional build identity
+        run: |
+          code_sha=$(git log --invert-grep --grep='^health:' -1 --format=%H)
+          code_date=$(git show -s --format=%cI "$code_sha")
+          code_number=$(git log --invert-grep --grep='^health:' --format=%H | wc -l | tr -d ' ')
+          echo "sha=$code_sha" >> "$GITHUB_OUTPUT"
+          echo "date=$code_date" >> "$GITHUB_OUTPUT"
+          echo "number=$code_number" >> "$GITHUB_OUTPUT"
+      - run: npm run materialize
       - run: npm run build -w @strata/client
         env:
           STRATA_BASE: /strata/
+          STRATA_BUILD_SHA: ${{ steps.build-info.outputs.sha }}
+          STRATA_BUILD_DATE: ${{ steps.build-info.outputs.date }}
+          STRATA_BUILD_NUMBER: ${{ steps.build-info.outputs.number }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: packages/client/dist
@@ -42,3 +58,17 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Wait for the materialized asset
+        run: curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 3 https://gergol.github.io/strata/data/grid_generation_mix-at.json --output /dev/null
+      - run: npx tsx packages/runner/src/verify.ts verify layers/*.yaml

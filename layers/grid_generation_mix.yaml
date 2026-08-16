@@ -1,12 +1,12 @@
 # Phase 0 probe layer for the A3 (region lookup) adapter — plan M0.5.
-# Coverage is the AT bidding zone for now; adding zones = adding polygons to
-# the region pack, no code. Region pack served from raw.githubusercontent
-# (CORS-open) so browser and Actions runner read the same file.
+# Energy-Charts does not allow the Pages origin via CORS. The Pages workflow
+# therefore validates and materializes its native response as a same-origin
+# asset; adding zones remains configuration plus a materialized output.
 id: grid_generation_mix
 name: Electricity generation mix
 domain: energy
 adapter: region
-endpoint: https://api.energy-charts.info/public_power?country={{region}}
+endpoint: https://gergol.github.io/strata/data/grid_generation_mix-{{region}}.json
 crs: EPSG:4326
 modes: [point, tile]
 zoom_valid: [4, 18]
@@ -27,6 +27,11 @@ health_assertion:
 coverage:
   regions: [at]
 provenance_note: "Live public net electricity generation for the bidding zone, via Energy-Charts (Fraunhofer ISE) aggregating official ENTSO-E/SMARD data; shares of current generation, not consumption"
+browser_access: materialized
 params:
   regions_url: https://raw.githubusercontent.com/gergol/strata/main/regions/bidding-zones.json
   format: energy_charts_public_power
+  materialize_source_endpoint: https://api.energy-charts.info/public_power?country={{region}}
+  materialize_regions: [at]
+  max_source_age_ms: 21600000
+  max_materialized_age_ms: 7200000

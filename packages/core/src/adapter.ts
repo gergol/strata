@@ -21,6 +21,8 @@ export type AdapterOutcome =
       basis: ResultBasis;
       /** For region adapters: which region answered (e.g. bidding zone id). */
       region?: string;
+      /** ISO timestamp of the upstream data represented by a materialized result. */
+      sourceUpdatedAt?: string;
     }
   | { kind: 'empty' }
   | { kind: 'no_coverage' };

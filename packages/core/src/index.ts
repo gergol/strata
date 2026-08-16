@@ -69,7 +69,7 @@ export type { LocalEngineDeps } from './local-engine.js';
 export { CogAdapter } from './adapters/cog.js';
 export type { CogAdapterDeps } from './adapters/cog.js';
 export { OverpassAdapter } from './adapters/overpass.js';
-export { RegionAdapter } from './adapters/region.js';
+export { RegionAdapter, parseEnergyChartsPublicPower } from './adapters/region.js';
 export { findContainingFeature, pointInFeature } from './geometry.js';
 export type { GeoJsonFeature, GeoJsonFeatureCollection } from './geometry.js';
 

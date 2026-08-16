@@ -64,6 +64,8 @@ export interface OkResult {
   provenance: string;
   /** For A3: which region answered (e.g. a NUTS or bidding-zone id). */
   region?: string;
+  /** Upstream data timestamp when it differs from the query/fetch time. */
+  sourceUpdatedAt?: string;
 }
 
 export interface EmptyResult {

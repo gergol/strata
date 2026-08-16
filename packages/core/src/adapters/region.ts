@@ -22,13 +22,51 @@ import { tileToBBox } from '../tile.js';
 
 type FormatParser = (body: unknown) => AdapterOutcome;
 
+interface MaterializedEnvelope {
+  schema_version: 1;
+  materialized_at: string;
+  source_updated_at: string;
+  payload: unknown;
+}
+
 /** Series in /public_power that are loads or derived ratios, not generation. */
 const NON_GENERATION_SERIES = /^(load|residual load|renewable share|cross border)/i;
 
+function unwrapMaterialized(body: unknown): { payload: unknown; sourceUpdatedAt?: string } {
+  if (typeof body !== 'object' || body === null || !('schema_version' in body)) return { payload: body };
+  const envelope = body as Partial<MaterializedEnvelope>;
+  if (
+    envelope.schema_version !== 1 ||
+    typeof envelope.materialized_at !== 'string' ||
+    typeof envelope.source_updated_at !== 'string' ||
+    !('payload' in envelope)
+  ) {
+    throw new Error('invalid materialized layer envelope');
+  }
+  if (!Number.isFinite(Date.parse(envelope.materialized_at)) || !Number.isFinite(Date.parse(envelope.source_updated_at))) {
+    throw new Error('invalid timestamp in materialized layer envelope');
+  }
+  return { payload: envelope.payload, sourceUpdatedAt: envelope.source_updated_at };
+}
+
 /** Energy-Charts /public_power: latest non-null values per production type → share histogram. */
-function parseEnergyChartsPublicPower(body: unknown): AdapterOutcome {
-  const data = body as { production_types?: Array<{ name: string; data: Array<number | null> }> };
-  const series = (data.production_types ?? []).filter((s) => !NON_GENERATION_SERIES.test(s.name));
+export function parseEnergyChartsPublicPower(body: unknown): AdapterOutcome {
+  const { payload, sourceUpdatedAt } = unwrapMaterialized(body);
+  if (typeof payload !== 'object' || payload === null) throw new Error('Energy-Charts response must be an object');
+  const data = payload as { production_types?: unknown };
+  if (!Array.isArray(data.production_types)) throw new Error('Energy-Charts response missing production_types');
+  const parsed = data.production_types.map((candidate) => {
+    if (typeof candidate !== 'object' || candidate === null) throw new Error('invalid Energy-Charts production series');
+    const series = candidate as { name?: unknown; data?: unknown };
+    if (typeof series.name !== 'string' || !Array.isArray(series.data)) {
+      throw new Error('invalid Energy-Charts production series');
+    }
+    if (!series.data.every((value) => value === null || typeof value === 'number')) {
+      throw new Error(`invalid Energy-Charts data values for '${series.name}'`);
+    }
+    return { name: series.name, data: series.data as Array<number | null> };
+  });
+  const series = parsed.filter((s) => !NON_GENERATION_SERIES.test(s.name));
   if (series.length === 0) return { kind: 'empty' };
   // Latest index where at least one series has a value.
   const len = Math.max(...series.map((s) => s.data.length));
@@ -50,6 +88,7 @@ function parseEnergyChartsPublicPower(body: unknown): AdapterOutcome {
     value: { kind: 'histogram', classes },
     aggregation: 'histogram',
     basis: 'aggregated',
+    ...(sourceUpdatedAt ? { sourceUpdatedAt } : {}),
   };
 }
 

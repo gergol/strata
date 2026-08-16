@@ -114,6 +114,38 @@ describe('RegionAdapter', () => {
     if (r.kind === 'ok') expect(r.region).toBe('at');
   });
 
+  it('unwraps materialized responses and preserves the upstream timestamp', async () => {
+    const io = makeIo();
+    io.fetch = (async (url: RequestInfo | URL) => {
+      const u = String(url);
+      io.urls.push(u);
+      if (u.includes('packs.test')) return new Response(JSON.stringify(pack), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          schema_version: 1,
+          materialized_at: '2026-08-16T13:15:00.000Z',
+          source_updated_at: '2026-08-16T13:00:00.000Z',
+          payload: apiBody,
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+    const r = await new RegionAdapter().point(descriptor, [14.5, 47.5], io);
+    expect(r).toMatchObject({ kind: 'ok', sourceUpdatedAt: '2026-08-16T13:00:00.000Z' });
+  });
+
+  it('rejects malformed materialized envelopes instead of parsing stale garbage', async () => {
+    const io = makeIo();
+    io.fetch = (async (url: RequestInfo | URL) => {
+      const u = String(url);
+      if (u.includes('packs.test')) return new Response(JSON.stringify(pack), { status: 200 });
+      return new Response(JSON.stringify({ schema_version: 1, payload: apiBody }), { status: 200 });
+    }) as typeof fetch;
+    await expect(new RegionAdapter().point(descriptor, [14.5, 47.5], io)).rejects.toThrow(
+      /invalid materialized layer envelope/,
+    );
+  });
+
   it('rejects unknown formats loudly', async () => {
     const bad = parseDescriptor({
       ...JSON.parse(JSON.stringify(descriptor)),

@@ -60,6 +60,7 @@
   }
 
   const fmt = (v: number): string => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2).replace(/\.?0+$/, ''));
+  const fmtSourceTime = (iso: string): string => `${iso.slice(0, 16).replace('T', ' ')} UTC`;
   const featureName = (f: unknown): string => {
     const p = (f as { properties?: Record<string, string> }).properties ?? {};
     return p['name'] ?? p['amenity'] ?? p['osm_type'] ? `${p['name'] ?? p['amenity'] ?? 'feature'} (${p['osm_type'] ?? ''} ${p['osm_id'] ?? ''})` : 'feature';
@@ -94,6 +95,7 @@
       <span class="chip">{r.aggregation}</span>
       <span class="chip" class:warn={r.basis !== 'aggregated'}>{BASIS_LABEL[r.basis]}</span>
       {#if r.region}<span class="chip">region: {r.region.toUpperCase()}</span>{/if}
+      {#if r.sourceUpdatedAt}<span class="chip">source: <time datetime={r.sourceUpdatedAt}>{fmtSourceTime(r.sourceUpdatedAt)}</time></span>{/if}
       {#if r.cacheHit}<span class="chip dim">cached</span>{/if}
     </div>
     <div class="provenance">{r.provenance}</div>
