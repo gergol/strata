@@ -49,9 +49,13 @@ Layers that call the same provider must share `rate_limit.group`. The limiter th
 
 The OSM POI pack uses bounded `nwr[...]{{spatial}};` templates so nodes, ways, and relations are handled uniformly. Point lists use `out center` and remain explicitly capped; tile counts use `out count` and therefore stay exact even for dense features. Add ordinary POIs to `layers/osm_pois.yaml`; provider defaults, attribution, and politeness settings should not be repeated.
 
-Every `bbox_vector` descriptor declares `params.protocol: overpass | sparql`; protocol selection is explicit rather than inferred from the endpoint. A SPARQL descriptor supplies a trusted WHERE-body fragment in `params.sparql_query` with exactly one `{{spatial}}` placeholder and a required `?item` variable. The adapter injects bounded `wikibase:around` or `wikibase:box` geography, labels, deterministic limits, result shape, and exact `COUNT(DISTINCT ?item)` tile aggregation. Full queries, nested `SERVICE`, query-form keywords, and update operations are rejected at registration.
+Every `bbox_vector` descriptor declares `params.protocol: overpass | sparql | wfs`; protocol selection is explicit rather than inferred from the endpoint. A SPARQL descriptor supplies a trusted WHERE-body fragment in `params.sparql_query` with exactly one `{{spatial}}` placeholder and a required `?item` variable. The adapter injects bounded `wikibase:around` or `wikibase:box` geography, labels, deterministic limits, result shape, and exact `COUNT(DISTINCT ?item)` tile aggregation. Full queries, nested `SERVICE`, query-form keywords, and update operations are rejected at registration.
 
 Add Wikidata geography layers to `layers/wikidata_places.yaml`. Prefer a precise direct `wdt:P31` class and an empirically bounded radius; broad subclass-property paths can exceed the public query service's hard timeout. State direct-class semantics and Wikidata's uneven coordinate/completeness coverage in provenance rather than implying an exhaustive real-world inventory. All WDQS layers share the existing `wikidata-query-service` limiter group, one request slot, and conservative spacing. Point feature lists are capped and visibly labelled when truncated; tile counts remain exact.
+
+Add standards-based WFS layers to `layers/wfs_features.yaml`. Pin `wfs_version`, the advertised `wfs_type_name`, the exact `wfs_srs_name`, and `wfs_axis_order`; WFS 1.1/2.0 axis conventions are not safe to infer from a familiar-looking EPSG code. `GetCapabilities` must advertise the feature type, the pinned CRS, and a GeoJSON output format before the adapter issues `GetFeature`. Native projected responses are reprojected through the pinned CRS registry into browser GeoJSON. Point mode uses a bounded descriptor radius and is labelled `nearest`; tile `count` uses `resultType=hits`, so it is exact without downloading geometry. Configure `wfs_label_fields` to produce a concise name from provider properties.
+
+The current generic client deliberately requires GeoJSON output. A GML-only service is not compatible merely because its capabilities document loads: record it as blocked, use an equivalent browser-safe service, or materialize it when bounded staleness is acceptable. Do not add an ad-hoc provider parser to UI code.
 
 ## 4. Prove the browser boundary
 
@@ -103,6 +107,8 @@ The final command performs the live assertion and browser-access checks. For a n
 For a descriptor pack, append `#layer_id` to verify one entry (for example `layers/osm_pois.yaml#osm_drinking_water`). Deployment smoke uses one representative canary per shared provider; the scheduled health workflow expands every pack entry and remains the exhaustive per-layer check.
 
 For Wikidata, verify every new layer's positive canary individually before relying on the representative deployment smoke. The public WDQS endpoint has a 60-second hard query limit and may return `429` with `Retry-After`; keep live development probes sequential and sparse. Browser requests use ordinary GET plus `Accept: application/sparql-results+json`, while the runner identifies itself with Strata's contact-bearing user agent.
+
+For WFS, verify both point mode and a valid-zoom tile count. The first proves capabilities discovery, bounded GeoJSON retrieval, CRS handling, labels, and browser CORS; the second proves the service's `resultType=hits` count envelope. A national parcel layer must use a hard high-zoom gate so a low-zoom tile cannot ask the service to count millions of polygons.
 
 ## 7. Review the change boundary
 
