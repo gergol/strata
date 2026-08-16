@@ -1,0 +1,82 @@
+defaults:
+  domain: weather
+  adapter: point_sample
+  crs: EPSG:4326
+  modes: [point, tile]
+  zoom_valid: [3, 18]
+  value_type: numeric
+  aggregation:
+    primary: mean
+    secondary: [latest]
+  native_unit: "provider native unit"
+  scale_factor: 1
+  ttl: 15m
+  rate_limit:
+    group: open-meteo
+    max_concurrent: 2
+    min_interval_ms: 100
+  licence: CC-BY-4.0
+  commercial_use: true
+  attribution: "Open-Meteo; forecast models from national weather services"
+  attribution_url: https://open-meteo.com/
+  coverage: global
+  search_beyond_tile: false
+  params:
+    sample_grid: 3
+    batch_coordinates: true
+    time_path: current.time
+    query:
+      timezone: GMT
+
+layers:
+  - id: weather_temperature_now
+    name: Modelled temperature now
+    endpoint: https://api.open-meteo.com/v1/forecast
+    unit: "°C"
+    native_unit: "°C"
+    health_assertion:
+      at: [16.3738, 48.2082]
+      expect_range: [-50, 60]
+    provenance_note: "Current 2 m temperature from Open-Meteo's best-match forecast-model grid; sampled at the selected coordinate, not a weather-station observation"
+    params:
+      value_path: current.temperature_2m
+      query:
+        timezone: GMT
+        current: temperature_2m
+
+  - id: air_quality_european_aqi
+    name: European air-quality index now
+    endpoint: https://air-quality-api.open-meteo.com/v1/air-quality
+    unit: "European AQI"
+    native_unit: "European AQI"
+    attribution: "Open-Meteo and CAMS ENSEMBLE"
+    attribution_url: https://open-meteo.com/en/docs/air-quality-api
+    health_assertion:
+      at: [16.3738, 48.2082]
+      expect_range: [0, 500]
+    provenance_note: "Current consolidated European AQI from the CAMS forecast grid via Open-Meteo; sampled model value, not a local monitoring-station reading"
+    params:
+      value_path: current.european_aqi
+      query:
+        timezone: GMT
+        current: european_aqi
+
+  - id: pollen_ragweed_now
+    name: Ragweed pollen forecast now
+    endpoint: https://air-quality-api.open-meteo.com/v1/air-quality
+    unit: "grains/m³"
+    native_unit: "grains/m³"
+    attribution: "Open-Meteo and CAMS European air-quality forecast"
+    attribution_url: https://open-meteo.com/en/docs/air-quality-api
+    coverage:
+      bbox: [-25, 30, 45, 72]
+    health_assertion:
+      at: [16.3738, 48.2082]
+      expect_range: [0, 100000]
+    provenance_note: "Current CAMS Europe ragweed-pollen forecast via Open-Meteo; sampled model value and meaningful only inside the European forecast domain"
+    params:
+      value_path: current.ragweed_pollen
+      query:
+        timezone: GMT
+        domains: cams_europe
+        current: ragweed_pollen

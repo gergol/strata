@@ -26,7 +26,7 @@
 
   const BASIS_LABEL: Record<string, string> = {
     aggregated: 'aggregated',
-    sampled: 'sampled — probe grid, not a statistic',
+    sampled: 'sampled model value — not a statistic',
     nearest: 'nearest — searched around the point',
   };
   const ERROR_LABEL: Record<string, string> = {

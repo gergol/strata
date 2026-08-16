@@ -86,6 +86,26 @@ async function mockExternalData(page: Page): Promise<void> {
       headers: corsHeaders,
     });
   });
+  await page.route('https://api.open-meteo.com/v1/forecast?**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ current: { time: '2026-08-16T20:00', temperature_2m: 22.5 } }),
+      headers: corsHeaders,
+    }),
+  );
+  await page.route('https://air-quality-api.open-meteo.com/v1/air-quality?**', (route) => {
+    const variable = new URL(route.request().url()).searchParams.get('current');
+    const current = variable === 'ragweed_pollen'
+      ? { time: '2026-08-16T20:00', ragweed_pollen: 3.5 }
+      : { time: '2026-08-16T20:00', european_aqi: 42 };
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ current }),
+      headers: corsHeaders,
+    });
+  });
   await page.route('https://service.pdok.nl/**', (route) => {
     const url = new URL(route.request().url());
     const cadastral = url.pathname.includes('kadastralekaart');
@@ -125,7 +145,7 @@ test.beforeEach(async ({ page }) => {
 test('queries the materialized energy and Overpass layers through the real worker', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('30 of 30 query layers')).toBeVisible();
+  await expect(page.getByText('33 of 33 query layers')).toBeVisible();
 
   const canvas = page.locator('.maplibregl-canvas');
   await expect(canvas).toBeVisible();
@@ -256,16 +276,16 @@ test('filters the expanded query catalogue by layer name or domain', async ({ pa
   await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
 
-  await expect(page.getByText('30 of 30 query layers')).toBeVisible();
+  await expect(page.getByText('33 of 33 query layers')).toBeVisible();
   await filter.fill('transport');
-  await expect(page.getByText('3 of 30 query layers')).toBeVisible();
+  await expect(page.getByText('3 of 33 query layers')).toBeVisible();
   await expect(page.getByRole('button', { name: /Bicycle parking/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /EV charging stations/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /International airports \(Wikidata\)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Soil pH/ })).toHaveCount(0);
 
   await filter.fill('bookcase');
-  await expect(page.getByText('1 of 30 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 33 query layers')).toBeVisible();
   const bookcase = page.getByRole('button', { name: /Public bookcases/ });
   await bookcase.click();
   await expect(page.locator('section.panel').filter({ hasText: 'Public bookcases' }).locator('.value')).toContainText('1');
@@ -278,7 +298,7 @@ test('queries and maps a linked Wikidata layer through the SPARQL adapter', asyn
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('Museums (Wikidata)');
-  await expect(page.getByText('1 of 30 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 33 query layers')).toBeVisible();
 
   const museums = page.locator('section.panel').filter({ hasText: 'Museums (Wikidata)' });
   await museums.getByRole('button', { name: /Museums \(Wikidata\)/ }).click();
@@ -293,12 +313,26 @@ test('queries and maps a linked Wikidata layer through the SPARQL adapter', asyn
   await expect(museums.getByText('count', { exact: true })).toBeVisible();
 });
 
+test('renders Open-Meteo point samples without presenting them as observations or statistics', async ({ page }) => {
+  await page.goto('/');
+  const filter = page.getByRole('searchbox', { name: 'Filter layers' });
+  await filter.fill('European air-quality index');
+  await expect(page.getByText('1 of 33 query layers')).toBeVisible();
+
+  const panel = page.locator('section.panel').filter({ hasText: 'European air-quality index now' });
+  await panel.getByRole('button', { name: /European air-quality index/ }).click();
+  await expect(panel.locator('.value').first()).toContainText('42');
+  await expect(panel.getByText('sampled model value — not a statistic')).toBeVisible();
+  await expect(panel.getByText(/sampled model value, not a local monitoring-station reading/)).toBeVisible();
+  await expect(panel.getByText(/source:/)).toBeVisible();
+});
+
 test('queries a zoom-gated cadastral layer through GetCapabilities-driven WFS', async ({ page }) => {
   await page.context().setGeolocation({ latitude: 52.36, longitude: 4.885, accuracy: 10 });
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('Cadastral parcels');
-  await expect(page.getByText('1 of 30 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 33 query layers')).toBeVisible();
 
   const cadastral = page.locator('section.panel').filter({ hasText: 'Cadastral parcels (NL)' });
   await cadastral.getByRole('button', { name: /Cadastral parcels/ }).click();

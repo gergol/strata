@@ -365,6 +365,36 @@ export const layerDescriptorSchema = z
         }
       }
     }
+    if (d.adapter === 'point_sample') {
+      if (d.value_type !== 'numeric') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['value_type'],
+          message: 'point_sample currently supports numeric response fields',
+        });
+      }
+      if (typeof d.params?.['value_path'] !== 'string' || !/^[A-Za-z0-9_.-]+$/.test(d.params['value_path'])) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['params', 'value_path'],
+          message: 'point_sample layers must declare a dotted JSON value_path',
+        });
+      }
+      const sampleGrid = d.params?.['sample_grid'];
+      if (sampleGrid !== undefined && (
+        typeof sampleGrid !== 'number' ||
+        !Number.isInteger(sampleGrid) ||
+        sampleGrid < 1 ||
+        sampleGrid > 5 ||
+        sampleGrid % 2 === 0
+      )) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['params', 'sample_grid'],
+          message: 'sample_grid must be an odd integer from 1 to 5',
+        });
+      }
+    }
   });
 
 export type LayerDescriptor = z.infer<typeof layerDescriptorSchema>;

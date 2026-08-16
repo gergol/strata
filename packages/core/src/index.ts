@@ -74,6 +74,7 @@ export type { CogAdapterDeps } from './adapters/cog.js';
 export { OverpassAdapter } from './adapters/overpass.js';
 export { SparqlAdapter } from './adapters/sparql.js';
 export { WfsAdapter } from './adapters/wfs.js';
+export { PointSampleAdapter } from './adapters/point-sample.js';
 export { BBoxVectorAdapter } from './adapters/bbox-vector.js';
 export { RegionAdapter, parseEnergyChartsPublicPower } from './adapters/region.js';
 export { findContainingFeature, pointInFeature } from './geometry.js';
@@ -82,6 +83,7 @@ export type { GeoJsonFeature, GeoJsonFeatureCollection } from './geometry.js';
 import { CogAdapter as CogAdapterClass } from './adapters/cog.js';
 import { BBoxVectorAdapter as BBoxVectorAdapterClass } from './adapters/bbox-vector.js';
 import { RegionAdapter as RegionAdapterClass } from './adapters/region.js';
+import { PointSampleAdapter as PointSampleAdapterClass } from './adapters/point-sample.js';
 import type { Adapter } from './adapter.js';
 import type { AdapterId } from './descriptor.js';
 
@@ -91,5 +93,6 @@ export function defaultAdapters(): Partial<Record<AdapterId, Adapter>> {
     cog: new CogAdapterClass(),
     bbox_vector: new BBoxVectorAdapterClass(),
     region: new RegionAdapterClass(),
+    point_sample: new PointSampleAdapterClass(),
   };
 }

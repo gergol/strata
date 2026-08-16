@@ -87,6 +87,7 @@ jobs:
               "layers/wikidata_places.yaml#wikidata_lighthouses"
               "layers/wfs_features.yaml#natura2000_nl"
               "layers/wfs_features.yaml#flood_hazard_zones_vienna"
+              "layers/open_meteo_samples.yaml#weather_temperature_now"
               layers/worldcover_2021.yaml
             )
           fi
