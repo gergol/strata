@@ -1,20 +1,173 @@
 {
-  "generatedAt": "2026-08-16T12:27:42.345Z",
+  "generatedAt": "2026-08-16T18:34:27.683Z",
   "layers": {
     "grid_generation_mix": {
       "ok": true,
+      "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-16T12:27:34.050Z"
+      "checkedAt": "2026-08-16T18:27:11.703Z"
     },
     "osm_drinking_water": {
       "ok": true,
+      "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-16T12:27:35.327Z"
+      "checkedAt": "2026-08-16T18:27:12.358Z"
+    },
+    "osm_defibrillators": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:27:29.530Z"
+    },
+    "osm_public_toilets": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:27:31.933Z"
+    },
+    "osm_benches": {
+      "ok": false,
+      "browserOk": true,
+      "status": "error",
+      "checkedAt": "2026-08-16T18:27:38.298Z"
+    },
+    "osm_bicycle_parking": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:28:16.460Z"
+    },
+    "osm_parcel_lockers": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:28:19.087Z"
+    },
+    "osm_public_bookcases": {
+      "ok": false,
+      "browserOk": true,
+      "status": "error",
+      "checkedAt": "2026-08-16T18:28:20.160Z"
+    },
+    "osm_recycling": {
+      "ok": false,
+      "browserOk": true,
+      "status": "error",
+      "checkedAt": "2026-08-16T18:28:56.409Z"
+    },
+    "osm_charging_stations": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:29:23.133Z"
+    },
+    "osm_post_boxes": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:29:30.973Z"
+    },
+    "osm_police": {
+      "ok": false,
+      "browserOk": true,
+      "status": "error",
+      "checkedAt": "2026-08-16T18:29:31.860Z"
+    },
+    "osm_fire_stations": {
+      "ok": false,
+      "browserOk": true,
+      "status": "error",
+      "checkedAt": "2026-08-16T18:30:04.396Z"
+    },
+    "osm_hospitals": {
+      "ok": false,
+      "browserOk": true,
+      "status": "error",
+      "checkedAt": "2026-08-16T18:30:29.364Z"
+    },
+    "osm_bunkers": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:31:01.283Z"
+    },
+    "osm_chimneys": {
+      "ok": false,
+      "browserOk": true,
+      "status": "error",
+      "checkedAt": "2026-08-16T18:31:21.679Z"
     },
     "soilgrids_ph": {
       "ok": true,
+      "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-16T12:27:39.128Z"
+      "checkedAt": "2026-08-16T18:31:49.453Z"
+    },
+    "wikidata_lighthouses": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:31:52.796Z"
+    },
+    "wikidata_castles": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:31:52.969Z"
+    },
+    "wikidata_memorials": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:32:07.819Z"
+    },
+    "wikidata_museums": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:32:08.348Z"
+    },
+    "wikidata_universities": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:32:09.749Z"
+    },
+    "wikidata_stadiums": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:32:11.364Z"
+    },
+    "wikidata_coal_power_stations": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:32:13.183Z"
+    },
+    "wikidata_nuclear_power_plants": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:32:22.210Z"
+    },
+    "wikidata_observatories": {
+      "ok": false,
+      "browserOk": true,
+      "status": "error",
+      "checkedAt": "2026-08-16T18:32:22.600Z"
+    },
+    "wikidata_international_airports": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-08-16T18:34:23.762Z"
+    },
+    "worldcover_2021": {
+      "ok": true,
+      "browserOk": true,
+      "status": "overlay_ok",
+      "checkedAt": "2026-08-16T18:34:24.963Z"
     }
   }
 }
