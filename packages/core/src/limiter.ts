@@ -130,11 +130,7 @@ export class RateLimiter {
             throw e;
           }
           if (RETRYABLE_STATUSES.has(response.status) && attempt < this.maxRetries) {
-            const retryAfter = response.headers.get('Retry-After');
-            const seconds = retryAfter !== null ? Number(retryAfter) : NaN;
-            const delay = Number.isFinite(seconds)
-              ? seconds * 1000
-              : this.baseBackoffMs * 2 ** attempt;
+            const delay = this.retryDelay(response, attempt);
             attempt++;
             await this.clock.sleep(delay);
             continue;
@@ -161,5 +157,19 @@ export class RateLimiter {
       s.openUntil = this.clock.now() + this.cooldownMs;
       s.consecutiveFailures = 0;
     }
+  }
+
+  private retryDelay(response: Response, attempt: number): number {
+    const retryAfter = response.headers.get('Retry-After');
+    if (retryAfter !== null) {
+      const seconds = Number(retryAfter);
+      if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+      const at = Date.parse(retryAfter);
+      if (Number.isFinite(at)) return Math.max(0, at - this.clock.now());
+    }
+    // A throttling response without guidance needs a meaningful cooldown;
+    // immediate sub-second replays are likely to consume the same busy slot.
+    const base = response.status === 429 ? Math.max(2_000, this.baseBackoffMs) : this.baseBackoffMs;
+    return base * 2 ** attempt;
   }
 }

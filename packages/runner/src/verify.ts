@@ -84,7 +84,14 @@ function checkAssertion(layerFile: string, result: LayerResult, expected: unknow
     expect_min_count?: number;
     expect_status?: 'ok' | 'empty';
   };
-  console.log(`${layerFile}: ${JSON.stringify(result)}`);
+  const summary = result.status === 'ok'
+    ? result.value.kind === 'features'
+      ? { status: result.status, kind: result.value.kind, count: result.value.features.length, truncated: result.value.truncated }
+      : result.value.kind === 'histogram'
+        ? { status: result.status, kind: result.value.kind, classes: result.value.classes.length }
+        : { status: result.status, kind: result.value.kind, value: result.value.value }
+    : result;
+  console.log(`${layerFile}: ${JSON.stringify(summary)}`);
   if (assertion.expect_status !== undefined) {
     return result.status === assertion.expect_status;
   }

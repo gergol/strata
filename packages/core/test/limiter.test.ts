@@ -120,7 +120,23 @@ describe('transient HTTP handling (R7.6)', () => {
     const res = await wrapped('https://x.test/');
     expect(res.status).toBe(429); // returned to the caller after retries exhausted
     expect(calls).toBe(3); // initial + 2 retries
-    expect(clock.t()).toBeGreaterThanOrEqual(100 + 200); // 100*2^0 + 100*2^1
+    expect(clock.t()).toBeGreaterThanOrEqual(2000 + 4000); // 429 fallback is deliberately slower
+  });
+
+  it('honours an HTTP-date Retry-After value', async () => {
+    const clock = makeClock();
+    const limiter = new RateLimiter(clock, { maxRetries: 1 });
+    let calls = 0;
+    const retryAt = new Date(5_000).toUTCString();
+    const flakyFetch = (async () => {
+      calls++;
+      return calls === 1
+        ? new Response('busy', { status: 503, headers: { 'Retry-After': retryAt } })
+        : okResponse();
+    }) as unknown as typeof fetch;
+
+    await limiter.wrapFetch('provider', { max_concurrent: 1, min_interval_ms: 0 }, flakyFetch)('https://x.test/');
+    expect(clock.t()).toBe(5_000);
   });
 
   it('retries an intermittent gateway timeout before returning it to the adapter', async () => {
