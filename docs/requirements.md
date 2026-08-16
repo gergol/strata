@@ -129,7 +129,7 @@ health_assertion:
 coverage: global
 provenance_note: "250 m modelled, not measured"
 ```
-> *Schema note (v0.3):* the implemented descriptor schema v1 (`packages/core`) additionally defines optional `nodata` (sentinel filtered before scaling), `browser_access` (plan §5), `location_precision` (decision D5), `search_beyond_tile` (R4.4), and `params` (adapter-specific configuration). `value_type` is mandatory: it decides whether R6.3 (numeric) or R4.3 (categorical) binds. A layer declaring `overlay` mode also declares a validated rendering contract (tile templates, zoom bounds, opacity, and optional legend) independent of its analytical adapter.
+> *Schema note (v0.4):* the implemented descriptor schema v1 (`packages/core`) additionally defines optional `nodata` (sentinel filtered before scaling), `browser_access` (plan §5), `location_precision` (decision D5), `search_beyond_tile` (R4.4), and `params` (adapter-specific configuration). `value_type` is mandatory: it decides whether R6.3 (numeric) or R4.3 (categorical) binds. A layer declaring `overlay` mode also declares a validated rendering contract (tile templates, zoom bounds, opacity, and optional legend) independent of its analytical adapter. An overlay-only layer uses `health_assertion.expect_overlay: true`; the canary validates a rendered tile rather than inventing a point value.
 ### 6.1 Requirements
 - R6.1 No layer-specific logic outside its adapter. If a layer needs bespoke code, the adapter is under-specified.
 - R6.2 `licence`, `commercial_use`, `attribution` are mandatory fields, validated at load. A layer without them fails to register.
@@ -148,7 +148,7 @@ A viewport query fanning out across 30 layers is 30 concurrent requests, several
 ---
 ## 8. Resilience — the real failure mode
 Licence drift is a slow, visible risk. **Silent schema change is the fast, invisible one**: a field renamed, a CRS quietly switched from EPSG:31287 to EPSG:4326, a WMS layer name versioned, a scale factor changed.
-- R8.1 Every layer carries a `health_assertion`: a known coordinate with a known expected answer or range.
+- R8.1 Every layer carries a `health_assertion`: a known coordinate with a known expected answer/range, or a rendered-tile canary for an overlay-only source.
 - R8.2 Health checks run on a schedule (independent of user activity) and report per-layer status.
 - R8.3 A failed assertion marks the layer degraded in the UI rather than removing it silently.
 - R8.4 Adapters must never guess CRS. Missing or ambiguous CRS is a hard error.
@@ -300,7 +300,7 @@ Before a layer is considered done:
 - [ ] Aggregation function declared and justified
 - [ ] `zoom_valid` range determined empirically, not guessed
 - [ ] Rate limit / politeness requirements read from provider docs
-- [ ] `health_assertion` written with a coordinate and expected range
+- [ ] `health_assertion` written with a coordinate and expected range, or `expect_overlay: true` for overlay-only data
 - [ ] All three empty states verified to render distinguishably
 - [ ] Coverage extent recorded, so "no coverage" is truthful
 - [ ] Modelled-vs-measured noted in `provenance_note`

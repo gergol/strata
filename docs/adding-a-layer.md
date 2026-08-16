@@ -25,6 +25,8 @@ Declare every supported interaction in `modes`. Tile mode must state one honest 
 
 Overlay mode is a rendering contract independent of the analytical adapter. A raster overlay declares one or more XYZ/WMTS/WMS tile templates, tile size, zoom bounds, default opacity, and an optional structured legend. The client understands `{z}`, `{x}`, `{y}`, and MapLibre's `{bbox-epsg-3857}` token. Keep visual and analytical semantics separate: a rendered WMS PNG can be an overlay for a COG-backed layer, but it cannot replace numeric point values or tile statistics.
 
+A source that exposes only rendered tiles uses `modes: [overlay]`, the `precomputed` adapter classification, and `health_assertion.expect_overlay: true`. It appears only in map controls, never in the point-result stack. Its health canary expands and fetches a real tile at `health_assertion.at`; do not add a synthetic point assertion to make the generic runner happy.
+
 ## 3. Author the descriptor
 
 Copy the closest existing descriptor in `layers/` and change every field deliberately. The schema is strict: unknown fields and misspellings fail loading.
@@ -36,7 +38,7 @@ Required decisions include:
 - `value_type`, aggregation, display `unit`, native unit, scale factor, and nodata where applicable;
 - cache TTL and conservative per-layer rate limit;
 - licence, commercial-use flag, attribution, coverage, and provenance;
-- a health coordinate on real coverage with a bounded expected result;
+- a health coordinate on real coverage with a bounded expected result, or `expect_overlay: true` for an overlay-only layer;
 - `browser_access: direct | materialized | blocked`.
 
 Descriptor changes invalidate cached results automatically because the descriptor hash is part of every cache key.

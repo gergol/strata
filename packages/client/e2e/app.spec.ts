@@ -52,6 +52,9 @@ async function mockExternalData(page: Page): Promise<void> {
   await page.route('https://maps.isric.org/mapserv?**', (route) =>
     route.fulfill({ status: 200, contentType: 'image/png', body: transparentPng, headers: corsHeaders }),
   );
+  await page.route('https://wmts.terrascope.be/wmts?**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: transparentPng, headers: corsHeaders }),
+  );
 }
 
 test.beforeEach(async ({ page }) => {
@@ -61,7 +64,7 @@ test.beforeEach(async ({ page }) => {
 test('queries the materialized energy and Overpass layers through the real worker', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('3 layers loaded.')).toBeVisible();
+  await expect(page.getByText('4 layers loaded.')).toBeVisible();
 
   const canvas = page.locator('.maplibregl-canvas');
   await expect(canvas).toBeVisible();
@@ -105,6 +108,21 @@ test('renders a descriptor-driven raster overlay with opacity and legend control
   await expect(controls.getByText('35%')).toBeVisible();
   await toggle.uncheck();
   await expect(opacity).toHaveCount(0);
+
+  const worldCoverToggle = controls.getByRole('checkbox', { name: 'WorldCover 2021 (visual)' });
+  const worldCoverRequest = page.waitForRequest((request) =>
+    request.url().startsWith('https://wmts.terrascope.be/wmts?') && request.url().includes('REQUEST=GetTile'),
+  );
+  await worldCoverToggle.check();
+  const renderedTile = await worldCoverRequest;
+  expect(renderedTile.url()).toContain('LAYER=esa-worldcover-map-10m-2021-v2_map');
+  expect(renderedTile.url()).not.toMatch(/\{[zxy]\}/);
+  await expect(controls.getByLabel('WorldCover 2021 (visual) legend')).toBeVisible();
+  await expect(controls.getByText('Built-up')).toBeVisible();
+
+  await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
+  await expect(page.locator('section.panel').filter({ hasText: 'WorldCover 2021' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Soil pH/ })).toBeVisible();
 });
 
 test('stores and removes BYOK values without rendering the stored value', async ({ page }) => {
@@ -135,6 +153,7 @@ test('keeps map and controls usable in the narrow layout', async ({ page }) => {
   expect(mapBox?.height).toBeGreaterThan(300);
   expect(mapBox?.height).toBeLessThan(430);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await expect(page.getByRole('checkbox', { name: 'WorldCover 2021 (visual)' })).toBeVisible();
   const settings = page.getByRole('button', { name: 'Settings' });
   await settings.focus();
   await settings.press('Enter');

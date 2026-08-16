@@ -148,6 +148,53 @@ describe('descriptor validation (R6.2, R6.3, R8.4)', () => {
     );
   });
 
+  it('accepts an honestly health-checked overlay-only layer', () => {
+    const overlayOnly = {
+      ...valid,
+      id: 'worldcover_2021',
+      adapter: 'precomputed',
+      modes: ['overlay'],
+      value_type: 'categorical',
+      aggregation: undefined,
+      unit: undefined,
+      scale_factor: undefined,
+      nodata: undefined,
+      health_assertion: { at: [16.37, 48.21], expect_overlay: true },
+      overlay: {
+        kind: 'raster',
+        tiles: ['https://tiles.test/{z}/{x}/{y}.png'],
+        min_zoom: 6,
+        max_zoom: 14,
+      },
+    };
+    const d = parseDescriptor(overlayOnly);
+    expect(d.modes).toEqual(['overlay']);
+    expect(d.health_assertion.expect_overlay).toBe(true);
+  });
+
+  it('requires overlay-only health semantics to match the layer mode', () => {
+    const overlay = {
+      kind: 'raster',
+      tiles: ['https://tiles.test/{z}/{x}/{y}.png'],
+      min_zoom: 6,
+      max_zoom: 14,
+    };
+    failsMentioning(
+      {
+        ...valid,
+        modes: ['overlay'],
+        aggregation: undefined,
+        health_assertion: { at: [16.37, 48.21], expect_status: 'ok' },
+        overlay,
+      },
+      'overlay-only layers must declare expect_overlay',
+    );
+    failsMentioning(
+      { ...valid, health_assertion: { at: [16.37, 48.21], expect_overlay: true } },
+      'expect_overlay requires overlay mode',
+    );
+  });
+
   it('forces categorical tile layers to histogram or modal_with_confidence (R4.3)', () => {
     failsMentioning(
       { ...valid, value_type: 'categorical', unit: undefined, scale_factor: undefined, aggregation: { primary: 'mean' } },

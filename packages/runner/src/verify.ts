@@ -99,6 +99,10 @@ function checkAssertion(layerFile: string, result: LayerResult, expected: unknow
   return false;
 }
 
+function supportsPointHealth(descriptor: { modes: readonly string[] }): boolean {
+  return descriptor.modes.includes('point');
+}
+
 async function verify(files: string[]): Promise<number> {
   let failures = 0;
   for (const file of files) {
@@ -109,10 +113,13 @@ async function verify(files: string[]): Promise<number> {
         io: makeIo(observations),
         adapters: defaultAdapters(),
       });
-      const result = await engine.point(descriptor.id, descriptor.health_assertion.at);
-      const livePass = checkAssertion(file, result, descriptor.health_assertion);
+      const result = supportsPointHealth(descriptor)
+        ? await engine.point(descriptor.id, descriptor.health_assertion.at)
+        : undefined;
+      const livePass = result ? checkAssertion(file, result, descriptor.health_assertion) : descriptor.health_assertion.expect_overlay === true;
       const browser = await checkBrowserAccess(descriptor, observations);
       const pass = livePass && browser.ok;
+      if (!result) console.log(`${file}: overlay tile canary`);
       console.log(`${file}: browser ${browser.ok ? 'PASS' : `FAIL — ${browser.note}`}`);
       console.log(`${file}: ${pass ? 'PASS' : 'FAIL'}`);
       if (!pass) failures++;
@@ -174,10 +181,17 @@ async function health(files: string[]): Promise<number> {
       const descriptor = loadDescriptorYaml(readFileSync(file, 'utf8'));
       const observations: FetchObservation[] = [];
       const engine = new LocalQueryEngine([descriptor], { io: makeIo(observations), adapters: defaultAdapters() });
-      const result = await engine.point(descriptor.id, descriptor.health_assertion.at);
-      const liveOk = checkAssertion(file, result, descriptor.health_assertion);
+      const result = supportsPointHealth(descriptor)
+        ? await engine.point(descriptor.id, descriptor.health_assertion.at)
+        : undefined;
+      const liveOk = result ? checkAssertion(file, result, descriptor.health_assertion) : descriptor.health_assertion.expect_overlay === true;
       const browser = await checkBrowserAccess(descriptor, observations);
-      const entry = { ok: liveOk && browser.ok, browserOk: browser.ok, status: result.status, checkedAt };
+      const entry = {
+        ok: liveOk && browser.ok,
+        browserOk: browser.ok,
+        status: result?.status ?? (browser.ok ? 'overlay_ok' : 'error'),
+        checkedAt,
+      };
       layers[descriptor.id] = browser.note ? { ...entry, note: browser.note } : entry;
     } catch (e) {
       layers[file] = { ok: false, browserOk: false, status: 'error', checkedAt, note: (e as Error).message };

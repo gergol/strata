@@ -89,8 +89,11 @@ describe('browser access verification', () => {
   it('expands and verifies the actual browser overlay tile URL', async () => {
     const overlayLayer = parseDescriptor({
       ...JSON.parse(JSON.stringify(base)),
-      modes: ['point', 'overlay'],
+      adapter: 'precomputed',
+      modes: ['overlay'],
+      health_assertion: { at: [14.5, 47.5], expect_overlay: true },
       browser_access: 'direct',
+      params: undefined,
       overlay: {
         kind: 'raster',
         tiles: ['https://tiles.test/wms?z={z}&x={x}&y={y}&bbox={bbox-epsg-3857}'],
@@ -120,8 +123,11 @@ describe('browser access verification', () => {
   it('fails an overlay whose rendered tiles deny the Pages origin', async () => {
     const overlayLayer = parseDescriptor({
       ...JSON.parse(JSON.stringify(base)),
-      modes: ['point', 'overlay'],
+      adapter: 'precomputed',
+      modes: ['overlay'],
+      health_assertion: { at: [14.5, 47.5], expect_overlay: true },
       browser_access: 'direct',
+      params: undefined,
       overlay: {
         kind: 'raster',
         tiles: ['https://tiles.test/{z}/{x}/{y}.png'],

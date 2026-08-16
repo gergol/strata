@@ -1,0 +1,50 @@
+# Official ESA WorldCover 2021 v200 visual service. This is intentionally an
+# overlay-only layer: rendered WMTS PNGs cannot answer analytical point or tile
+# queries, while the official multi-file COG distribution is not browser-CORS
+# readable from GitHub Pages.
+id: worldcover_2021
+name: WorldCover 2021 (visual)
+domain: environment
+adapter: precomputed
+endpoint: https://wmts.terrascope.be/wmts
+crs: EPSG:3857
+modes: [overlay]
+zoom_valid: [6, 14]
+value_type: categorical
+ttl: 30d
+rate_limit:
+  max_concurrent: 4
+  min_interval_ms: 0
+licence: CC-BY-4.0
+commercial_use: true
+attribution: "ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021)"
+attribution_url: https://esa-worldcover.org/en/data-access
+overlay:
+  kind: raster
+  tiles:
+    - "https://wmts.terrascope.be/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=esa-worldcover-map-10m-2021-v2_map&STYLE=default&FORMAT=image/png&TILEMATRIXSET=EPSG:3857&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&TIME=2021-01-01"
+  tile_size: 256
+  min_zoom: 6
+  max_zoom: 14
+  opacity: 0.7
+  legend:
+    title: Land-cover class
+    items:
+      - { label: "Tree cover", color: "#006400" }
+      - { label: "Shrubland", color: "#ffbb22" }
+      - { label: "Grassland", color: "#ffff4c" }
+      - { label: "Cropland", color: "#f096ff" }
+      - { label: "Built-up", color: "#fa0000" }
+      - { label: "Bare / sparse vegetation", color: "#b4b4b4" }
+      - { label: "Snow and ice", color: "#f0f0f0" }
+      - { label: "Permanent water bodies", color: "#0064c8" }
+      - { label: "Herbaceous wetland", color: "#0096a0" }
+      - { label: "Mangroves", color: "#00cf75" }
+      - { label: "Moss and lichen", color: "#fae6a0" }
+health_assertion:
+  at: [16.37, 48.21]
+  expect_overlay: true
+coverage:
+  bbox: [-180, -60, 180, 83]
+provenance_note: "Modelled 10 m land-cover classification for 2021; visual WMTS rendering only — no analytical point class or histogram"
+browser_access: direct

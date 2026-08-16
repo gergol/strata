@@ -67,13 +67,21 @@ const healthAssertionSchema = z
     expect_range: z.tuple([z.number(), z.number()]).optional(),
     expect_min_count: z.number().int().nonnegative().optional(),
     expect_status: z.enum(['ok', 'empty']).optional(),
+    /** Overlay-only canary: the runner probes an expanded rendered tile URL. */
+    expect_overlay: z.literal(true).optional(),
   })
   .strict()
   .superRefine((h, ctx) => {
-    if (h.expect_range === undefined && h.expect_min_count === undefined && h.expect_status === undefined) {
+    if (
+      h.expect_range === undefined &&
+      h.expect_min_count === undefined &&
+      h.expect_status === undefined &&
+      h.expect_overlay === undefined
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'health_assertion must declare at least one expectation (expect_range, expect_min_count, or expect_status) — R8.1',
+        message:
+          'health_assertion must declare at least one expectation (expect_range, expect_min_count, expect_status, or expect_overlay) — R8.1',
       });
     }
     if (h.expect_range !== undefined && h.expect_range[0] > h.expect_range[1]) {
@@ -252,6 +260,21 @@ export const layerDescriptorSchema = z
         code: z.ZodIssueCode.custom,
         path: ['modes'],
         message: 'a declared overlay rendering contract requires overlay mode',
+      });
+    }
+    const hasQueryMode = d.modes.includes('point') || d.modes.includes('tile');
+    if (!hasQueryMode && d.modes.includes('overlay') && d.health_assertion.expect_overlay !== true) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['health_assertion', 'expect_overlay'],
+        message: 'overlay-only layers must declare expect_overlay: true so health probes the rendered tile',
+      });
+    }
+    if (d.health_assertion.expect_overlay === true && !d.modes.includes('overlay')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['health_assertion', 'expect_overlay'],
+        message: 'expect_overlay requires overlay mode',
       });
     }
   });

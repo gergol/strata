@@ -25,6 +25,7 @@
   const overlayLayers = $derived(
     layers.filter((layer): layer is LayerSummary & { overlay: NonNullable<LayerSummary['overlay']> } => layer.overlay !== undefined),
   );
+  const queryLayers = $derived(layers.filter((layer) => layer.modes.includes('point')));
 
   const overlayData = new Map<string, { layer: LayerSummary; features: GeoJSON.Feature<GeoJSON.Point>[] }>();
   const DOMAIN_COLORS: Partial<Record<LayerSummary['domain'], string>> = {
@@ -245,7 +246,7 @@
     {#if target}
       <div class="coords">{target[1].toFixed(5)}, {target[0].toFixed(5)} · z{zoom}</div>
       <div class="stack">
-        {#each layers as layer (layer.id)}
+        {#each queryLayers as layer (layer.id)}
           <LayerPanel {engine} {layer} {target} {zoom} {epoch} onResult={showResultOnMap} />
         {/each}
       </div>
