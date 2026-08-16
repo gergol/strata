@@ -1,5 +1,5 @@
 # Strata — Technical Plan
-**Status:** v0.4, in effect (companion to [requirements.md](requirements.md) draft v0.2.1)
+**Status:** v0.4, in effect (companion to [requirements.md](requirements.md) draft v0.3)
 **Date:** 2026-08-16
 **Changed in v0.2:** architecture revised from thin-server-proxy to client-only after re-examination (see §1 and decisions.md D1); Phases 1–4 detailed (§8); requirements deviations forced by client-only recorded (§5).
 **Changed in v0.3:** decisions D1–D9 accepted by the author; D1 carries a rider — keep a later proxy switch contained — implemented as §4.5.
@@ -275,6 +275,12 @@ Phasing follows requirements §11; this section adds the milestone-level detail.
 - **M1.8 — GIBS + historical basemaps.** NRT satellite imagery WMTS; first historical map overlay if a browser-reachable WMTS exists (prep for Phase 2's compare slider).
 
 *Phase exit:* ≥30 live layers; health dashboard green-majority; the "unanticipated question" test — three real occasions where Strata answered something no single specialist app would have.
+
+#### Phase 1 progress
+
+**M1.1a — Raster overlay foundation (2026-08-16).** The descriptor now carries a validated raster-tile rendering contract independent of its analytical adapter. The query engine exposes normalized overlay metadata; the client can toggle the layer, change opacity, and read a descriptor-supplied legend and active attribution. Browser health expands the real `{z}/{x}/{y}` or `{bbox-epsg-3857}` tile URL at the layer's canary coordinate and requires an image response plus production-origin CORS. SoilGrids pH is the first live proof: its analytical point/tile answers still come from the COG adapter while its visual overlay comes from ISRIC's official WMS.
+
+This package deliberately stops before vector overlay styling, standalone overlay-only descriptors, GIBS time dimensions, or compare controls; those remain in M1.1/M1.8. The planned WorldCover analytical dry-run was rechecked first: the official 2021 v200 S3 COG responds to range requests but does not emit `Access-Control-Allow-Origin`, so a Pages browser cannot read it. The official Terrascope WMTS is a viable future *visual* overlay, but rendered PNG tiles cannot supply WorldCover point classes or histograms. Multi-file analytical COG support therefore remains blocked pending a browser-valid mirror, materialization strategy, or an explicit stateless-shim decision.
 
 ### Phase 2 — differentiators
 *Goal: the layers nobody has made pretty. All request/response or fully local; still no standing infrastructure.*
