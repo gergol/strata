@@ -73,6 +73,7 @@ test('queries the materialized energy and Overpass layers through the real worke
   const waterPanel = page.locator('section.panel').filter({ hasText: 'Drinking water points' });
   await expect(waterPanel.locator('.value').first()).toContainText('1');
   await expect(waterPanel.getByText(/Test fountain/)).toBeVisible();
+  await expect(page.locator('.map-feature-summary')).toHaveText('1 map point · Drinking water points');
   await waterPanel.getByRole('button', { name: /area stats/ }).click();
   await expect(waterPanel.getByText('count', { exact: true })).toBeVisible();
 });

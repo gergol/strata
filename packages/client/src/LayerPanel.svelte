@@ -8,12 +8,14 @@
     target,
     zoom,
     epoch,
+    onResult,
   }: {
     engine: QueryEngine;
     layer: LayerSummary;
     target: LonLat;
     zoom: number;
     epoch: number;
+    onResult?: (layer: LayerSummary, result: LayerResult) => void;
   } = $props();
 
   let expanded = $state(false);
@@ -41,13 +43,27 @@
   $effect(() => {
     void epoch;
     if (!expanded) return;
+    let active = true;
     areaResult = null;
     loading = true;
     engine
       .point(layer.id, target)
-      .then((r) => (result = r))
-      .catch((e: Error) => (result = { status: 'error', kind: 'upstream', message: e.message }))
-      .finally(() => (loading = false));
+      .then((r) => {
+        if (!active) return;
+        result = r;
+        onResult?.(layer, r);
+      })
+      .catch((e: Error) => {
+        if (!active) return;
+        result = { status: 'error', kind: 'upstream', message: e.message };
+        onResult?.(layer, result);
+      })
+      .finally(() => {
+        if (active) loading = false;
+      });
+    return () => {
+      active = false;
+    };
   });
 
   function queryArea(): void {
