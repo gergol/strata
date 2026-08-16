@@ -79,7 +79,17 @@
   const fmtSourceTime = (iso: string): string => `${iso.slice(0, 16).replace('T', ' ')} UTC`;
   const featureName = (f: unknown): string => {
     const p = (f as { properties?: Record<string, string> }).properties ?? {};
-    return p['name'] ?? p['amenity'] ?? p['osm_type'] ? `${p['name'] ?? p['amenity'] ?? 'feature'} (${p['osm_type'] ?? ''} ${p['osm_id'] ?? ''})` : 'feature';
+    const label =
+      p['name'] ??
+      p['brand'] ??
+      p['operator'] ??
+      p['amenity'] ??
+      p['emergency'] ??
+      p['military'] ??
+      p['man_made'] ??
+      'feature';
+    const identity = [p['osm_type'], p['osm_id']].filter(Boolean).join(' ');
+    return identity ? `${label} (${identity})` : label;
   };
 </script>
 

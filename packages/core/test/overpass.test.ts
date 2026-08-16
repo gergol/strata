@@ -41,6 +41,10 @@ function ioReturning(elements: unknown[], capture?: { body?: string }): IO {
   };
 }
 
+function ioReturningCount(total: number, capture?: { body?: string }): IO {
+  return ioReturning([{ type: 'count', id: 0, tags: { total: String(total) } }], capture);
+}
+
 const node = (id: number, lon: number, lat: number) => ({
   type: 'node',
   id,
@@ -63,7 +67,7 @@ describe('OverpassAdapter query construction', () => {
     const capture: { body?: string } = {};
     const tile = lonLatToTile([16.37, 48.21], 14);
     const [w, s, e, n] = tileToBBox(tile);
-    await new OverpassAdapter().tile(descriptor, tile, ioReturning([node(1, 16.37, 48.21)], capture));
+    await new OverpassAdapter().tile(descriptor, tile, ioReturningCount(1, capture));
     const decoded = decodeURIComponent(capture.body ?? '');
     expect(decoded).toContain(`(${s},${w},${n},${e})`);
   });
@@ -100,8 +104,15 @@ describe('OverpassAdapter outcomes', () => {
 
   it('tile mode aggregates to the declared count', async () => {
     const tile = lonLatToTile([16.37, 48.21], 14);
-    const r = await new OverpassAdapter().tile(descriptor, tile, ioReturning([node(1, 16.37, 48.21), node(2, 16.38, 48.22)]));
-    expect(r).toMatchObject({ kind: 'ok', value: { kind: 'scalar', value: 2 }, aggregation: 'count', basis: 'aggregated' });
+    const capture: { body?: string } = {};
+    const r = await new OverpassAdapter().tile(descriptor, tile, ioReturningCount(321, capture));
+    expect(r).toMatchObject({ kind: 'ok', value: { kind: 'scalar', value: 321 }, aggregation: 'count', basis: 'aggregated' });
+    expect(decodeURIComponent(capture.body ?? '')).toContain('out count;');
+  });
+
+  it('rejects a malformed count response instead of reporting a capped value', async () => {
+    const tile = lonLatToTile([16.37, 48.21], 14);
+    await expect(new OverpassAdapter().tile(descriptor, tile, ioReturning([]))).rejects.toThrow(/tags.total/);
   });
 
   it('zero results is empty — information, not an error (R5.3)', async () => {

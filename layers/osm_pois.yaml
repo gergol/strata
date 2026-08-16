@@ -1,0 +1,140 @@
+# M1.2 curated OpenStreetMap POI pack. Shared fields live in `defaults`; adding
+# another standard POI is one compact entry under `layers`. Every query is
+# spatially bounded and all entries share one provider-level limiter/circuit.
+defaults:
+  adapter: bbox_vector
+  endpoint: https://overpass-api.de/api/interpreter
+  crs: EPSG:4326
+  modes: [point, tile]
+  zoom_valid: [12, 19]
+  value_type: feature
+  aggregation:
+    primary: count
+    secondary: [feature_list]
+  ttl: 7d
+  rate_limit:
+    group: overpass-api-de
+    max_concurrent: 1
+    min_interval_ms: 1000
+  licence: ODbL-1.0
+  commercial_use: true
+  attribution: "© OpenStreetMap contributors"
+  attribution_url: https://www.openstreetmap.org/copyright
+  coverage: global
+  provenance_note: "Crowdsourced OpenStreetMap data via Overpass; completeness and tagging vary by region"
+  browser_access: direct
+  search_beyond_tile: true
+  params:
+    point_radius_m: 300
+    feature_cap: 100
+
+layers:
+  - id: osm_drinking_water
+    name: Drinking water points
+    domain: built
+    health_assertion: { at: [16.470141, 48.190961], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=drinking_water]{{spatial}};"
+
+  - id: osm_defibrillators
+    name: Defibrillators (AEDs)
+    domain: society
+    health_assertion: { at: [16.3424919, 48.1672672], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[emergency=defibrillator]{{spatial}};"
+
+  - id: osm_public_toilets
+    name: Public toilets
+    domain: built
+    health_assertion: { at: [16.3614589, 48.2262281], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=toilets]{{spatial}};"
+
+  - id: osm_benches
+    name: Benches
+    domain: built
+    health_assertion: { at: [16.3313272, 48.2351914], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=bench]{{spatial}};"
+      point_radius_m: 200
+
+  - id: osm_bicycle_parking
+    name: Bicycle parking
+    domain: transport
+    health_assertion: { at: [16.3583507, 48.2353437], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=bicycle_parking]{{spatial}};"
+
+  - id: osm_parcel_lockers
+    name: Parcel lockers
+    domain: built
+    health_assertion: { at: [16.3576274, 48.2091384], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=parcel_locker]{{spatial}};"
+
+  - id: osm_public_bookcases
+    name: Public bookcases
+    domain: society
+    health_assertion: { at: [16.2832536, 48.1292366], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=public_bookcase]{{spatial}};"
+
+  - id: osm_recycling
+    name: Recycling points
+    domain: environment
+    health_assertion: { at: [16.3456563, 48.208939], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=recycling]{{spatial}};"
+
+  - id: osm_charging_stations
+    name: EV charging stations
+    domain: transport
+    health_assertion: { at: [16.3987848, 48.2226444], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=charging_station]{{spatial}};"
+      point_radius_m: 400
+
+  - id: osm_post_boxes
+    name: Post boxes
+    domain: society
+    health_assertion: { at: [16.3160099, 48.1504362], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=post_box]{{spatial}};"
+
+  - id: osm_police
+    name: Police stations
+    domain: society
+    health_assertion: { at: [16.3247974, 48.3027379], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=police]{{spatial}};"
+      point_radius_m: 400
+
+  - id: osm_fire_stations
+    name: Fire stations
+    domain: society
+    health_assertion: { at: [16.408698, 48.3336341], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=fire_station]{{spatial}};"
+      point_radius_m: 400
+
+  - id: osm_hospitals
+    name: Hospitals
+    domain: society
+    health_assertion: { at: [16.3984155, 48.1955792], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[amenity=hospital]{{spatial}};"
+      point_radius_m: 500
+
+  - id: osm_bunkers
+    name: Bunkers
+    domain: built
+    health_assertion: { at: [16.380121, 48.312006], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[military=bunker]{{spatial}};"
+
+  - id: osm_chimneys
+    name: Chimneys
+    domain: built
+    health_assertion: { at: [16.3804687, 48.3114647], expect_min_count: 1 }
+    params:
+      overpass_query: "nwr[man_made=chimney]{{spatial}};"

@@ -31,6 +31,13 @@ interface OverpassResponse {
   elements?: OverpassElement[];
 }
 
+interface OverpassCountResponse {
+  elements?: Array<{
+    type?: string;
+    tags?: { total?: string };
+  }>;
+}
+
 const DEFAULT_POINT_RADIUS_M = 300;
 const DEFAULT_FEATURE_CAP = 200;
 
@@ -55,23 +62,39 @@ function toFeature(el: OverpassElement): unknown {
 }
 
 export class OverpassAdapter implements Adapter {
-  private async run(layer: LayerDescriptor, spatial: string, io: IO): Promise<OverpassElement[]> {
-    const cap = Number(layer.params?.['feature_cap'] ?? DEFAULT_FEATURE_CAP);
-    const body = queryTemplate(layer).replaceAll('{{spatial}}', spatial);
-    const query = `[out:json][timeout:25];${body}out center ${cap + 1};`;
+  private async request(layer: LayerDescriptor, query: string, io: IO): Promise<unknown> {
     const res = await io.fetch(layer.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `data=${encodeURIComponent(query)}`,
     });
     if (!res.ok) throw new Error(`Overpass returned ${res.status}`);
-    const json = (await res.json()) as OverpassResponse;
+    return res.json();
+  }
+
+  private async runFeatures(layer: LayerDescriptor, spatial: string, io: IO): Promise<OverpassElement[]> {
+    const cap = Number(layer.params?.['feature_cap'] ?? DEFAULT_FEATURE_CAP);
+    const body = queryTemplate(layer).replaceAll('{{spatial}}', spatial);
+    const query = `[out:json][timeout:25];${body}out center ${cap + 1};`;
+    const json = (await this.request(layer, query, io)) as OverpassResponse;
     return json.elements ?? [];
+  }
+
+  private async runCount(layer: LayerDescriptor, spatial: string, io: IO): Promise<number> {
+    const body = queryTemplate(layer).replaceAll('{{spatial}}', spatial);
+    const query = `[out:json][timeout:25];${body}out count;`;
+    const json = (await this.request(layer, query, io)) as OverpassCountResponse;
+    const raw = json.elements?.find((element) => element.type === 'count')?.tags?.total;
+    const count = Number(raw);
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new Error(`Overpass count response has no valid tags.total`);
+    }
+    return count;
   }
 
   async point(layer: LayerDescriptor, at: LonLat, io: IO): Promise<AdapterOutcome> {
     const radius = Number(layer.params?.['point_radius_m'] ?? DEFAULT_POINT_RADIUS_M);
-    const elements = await this.run(layer, `(around:${radius},${at[1]},${at[0]})`, io);
+    const elements = await this.runFeatures(layer, `(around:${radius},${at[1]},${at[0]})`, io);
     if (elements.length === 0) return { kind: 'empty' };
     const cap = Number(layer.params?.['feature_cap'] ?? DEFAULT_FEATURE_CAP);
     return {
@@ -88,10 +111,21 @@ export class OverpassAdapter implements Adapter {
 
   async tile(layer: LayerDescriptor, tile: Tile, io: IO): Promise<AdapterOutcome> {
     const [w, s, e, n] = tileToBBox(tile);
-    const elements = await this.run(layer, `(${s},${w},${n},${e})`, io);
+    const primary = layer.aggregation?.primary ?? 'count';
+    const spatial = `(${s},${w},${n},${e})`;
+    if (primary === 'count') {
+      const count = await this.runCount(layer, spatial, io);
+      if (count === 0) return { kind: 'empty' };
+      return {
+        kind: 'ok',
+        value: { kind: 'scalar', value: count },
+        aggregation: 'count',
+        basis: 'aggregated',
+      };
+    }
+    const elements = await this.runFeatures(layer, spatial, io);
     if (elements.length === 0) return { kind: 'empty' };
     const cap = Number(layer.params?.['feature_cap'] ?? DEFAULT_FEATURE_CAP);
-    const primary = layer.aggregation?.primary ?? 'count';
     if (primary === 'feature_list') {
       return {
         kind: 'ok',
@@ -104,12 +138,6 @@ export class OverpassAdapter implements Adapter {
         basis: 'aggregated',
       };
     }
-    // count (and density once tile areas are surfaced; count is the honest default)
-    return {
-      kind: 'ok',
-      value: { kind: 'scalar', value: Math.min(elements.length, cap + 1) },
-      aggregation: 'count',
-      basis: 'aggregated',
-    };
+    throw new Error(`unsupported Overpass tile aggregation '${primary}'`);
   }
 }
