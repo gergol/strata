@@ -117,8 +117,10 @@ test('selects and centers the current location on startup and from the map contr
   await page.locator('.maplibregl-canvas').click({ position: { x: 80, y: 80 } });
   await expect(page.locator('.coords')).not.toContainText('48.20820, 16.37380');
   await expect(page.getByText('Current location selected')).toHaveCount(0);
+  await page.context().setGeolocation({ latitude: 48.22, longitude: 16.35, accuracy: 8 });
   await locate.click();
-  await expect(page.locator('.coords')).toContainText('48.20820, 16.37380 · z14');
+  await expect(page.locator('.coords')).toContainText('48.22000, 16.35000 · z14');
+  await expect(page.getByRole('status')).toHaveText('Current location selected (within 8 m).');
   expect(consoleErrors).toEqual([]);
 });
 

@@ -202,7 +202,7 @@
     return 'Your current location could not be determined. Try again or click the map instead.';
   }
 
-  function requestCurrentLocation(): void {
+  function requestCurrentLocation(fresh = false): void {
     const currentMap = map;
     const requestId = ++locationRequestId;
     if (!currentMap || !navigator.geolocation) {
@@ -231,7 +231,7 @@
         locationStatus = 'error';
         locationMessage = locationErrorMessage(error);
       },
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: fresh ? 0 : 60_000 },
     );
   }
 
@@ -283,7 +283,7 @@
       class:locating={locationStatus === 'locating'}
       class="locate-button"
       type="button"
-      onclick={requestCurrentLocation}
+      onclick={() => requestCurrentLocation(true)}
       disabled={locationStatus === 'locating'}
       aria-label={locationStatus === 'locating' ? 'Finding current location' : 'Use current location'}
       aria-busy={locationStatus === 'locating'}
