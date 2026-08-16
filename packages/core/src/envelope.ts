@@ -37,6 +37,8 @@ export interface FeaturesValue {
   features: unknown[];
   /** True when the adapter hit the descriptor's feature cap (A1 capped lists). */
   truncated: boolean;
+  /** Optional human-readable analytical result for map-first feature outputs. */
+  summary?: string;
 }
 
 export type ResultValue = ScalarValue | HistogramValue | FeaturesValue;
@@ -46,8 +48,9 @@ export type ResultValue = ScalarValue | HistogramValue | FeaturesValue;
  *  - 'aggregated': a true statistic over the queried geometry
  *  - 'sampled': a small probe grid (A4) — must never be presented as a statistic
  *  - 'nearest': found outside the queried geometry (R4.4) — labelled, not contained
+ *  - 'modelled': computed locally from source data rather than observed directly
  */
-export type ResultBasis = 'aggregated' | 'sampled' | 'nearest';
+export type ResultBasis = 'aggregated' | 'sampled' | 'nearest' | 'modelled';
 
 export type ErrorKind = 'upstream' | 'timeout' | 'schema' | 'rate_limited' | 'circuit_open' | 'cors';
 

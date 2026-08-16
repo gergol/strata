@@ -25,6 +25,7 @@ import type { IO } from '../io.js';
 import type { BBox, LonLat, Tile } from '../tile.js';
 import { tileToBBox } from '../tile.js';
 import { applyScale, isNodata } from '../units.js';
+import { computeViewshedMask } from '../terrain.js';
 
 /** Max pixels read per tile query; above this a coarser overview is forced. */
 const MAX_WINDOW_PIXELS = 512 * 512;
@@ -64,6 +65,14 @@ export class CogAdapter implements Adapter {
     return { x: x as number, y: y as number };
   }
 
+  private fromNative(layer: LayerDescriptor, point: NativePoint): LonLat {
+    const def = CRS_REGISTRY[layer.crs];
+    if (!def) throw new Error(`CRS '${layer.crs}' not in registry (R8.4)`);
+    if (layer.crs === 'EPSG:4326') return [point.x, point.y];
+    const [lon, lat] = proj4(def, CRS_REGISTRY['EPSG:4326'] as string, [point.x, point.y]);
+    return [lon as number, lat as number];
+  }
+
   async point(layer: LayerDescriptor, at: LonLat, io: IO): Promise<AdapterOutcome> {
     const tiff = await this.tiff(layer, io);
     const image = await tiff.getImage(0); // finest resolution for point reads
@@ -71,6 +80,9 @@ export class CogAdapter implements Adapter {
     const [minX, minY, maxX, maxY] = image.getBoundingBox() as [number, number, number, number];
     if (native.x < minX || native.x > maxX || native.y < minY || native.y > maxY) {
       return { kind: 'no_coverage' };
+    }
+    if (layer.terrain_analysis?.kind === 'viewshed') {
+      return this.viewshed(layer, image, native, [minX, minY, maxX, maxY]);
     }
     const col = Math.min(
       image.getWidth() - 1,
@@ -96,6 +108,112 @@ export class CogAdapter implements Adapter {
       value: { kind: 'scalar', value: applyScale(raw, layer.scale_factor ?? 1) },
       aggregation: 'mean',
       basis: 'aggregated',
+    };
+  }
+
+  private async viewshed(
+    layer: LayerDescriptor,
+    image: GeoTIFFImage,
+    observer: NativePoint,
+    bbox: BBox,
+  ): Promise<AdapterOutcome> {
+    const analysis = layer.terrain_analysis;
+    if (!analysis) throw new Error(`layer '${layer.id}' has no terrain analysis contract`);
+    const [minX, minY, maxX, maxY] = bbox;
+    const sourceWidth = image.getWidth();
+    const sourceHeight = image.getHeight();
+    const sourceCellWidth = (maxX - minX) / sourceWidth;
+    const sourceCellHeight = (maxY - minY) / sourceHeight;
+    const colOf = (x: number): number => Math.floor((x - minX) / sourceCellWidth);
+    const rowOf = (y: number): number => Math.floor((maxY - y) / sourceCellHeight);
+    const window: [number, number, number, number] = [
+      Math.max(0, colOf(observer.x - analysis.radius_m)),
+      Math.max(0, rowOf(observer.y + analysis.radius_m)),
+      Math.min(sourceWidth, colOf(observer.x + analysis.radius_m) + 1),
+      Math.min(sourceHeight, rowOf(observer.y - analysis.radius_m) + 1),
+    ];
+    if (window[2] <= window[0] || window[3] <= window[1]) return { kind: 'no_coverage' };
+
+    const nativeWidth = (window[2] - window[0]) * sourceCellWidth;
+    const nativeHeight = (window[3] - window[1]) * sourceCellHeight;
+    const width = Math.max(2, Math.ceil(nativeWidth / analysis.grid_m));
+    const height = Math.max(2, Math.ceil(nativeHeight / analysis.grid_m));
+    const rasters = await image.readRasters({
+      window,
+      samples: [0],
+      width,
+      height,
+      resampleMethod: 'bilinear',
+    });
+    const values = rasters[0] as ArrayLike<number>;
+    const windowMinX = minX + window[0] * sourceCellWidth;
+    const windowMaxY = maxY - window[1] * sourceCellHeight;
+    const cellWidth = nativeWidth / width;
+    const cellHeight = nativeHeight / height;
+    const observerCol = Math.min(width - 1, Math.max(0, Math.floor((observer.x - windowMinX) / cellWidth)));
+    const observerRow = Math.min(height - 1, Math.max(0, Math.floor((windowMaxY - observer.y) / cellHeight)));
+    const mask = computeViewshedMask({
+      values,
+      width,
+      height,
+      observerCol,
+      observerRow,
+      cellWidthM: cellWidth,
+      cellHeightM: cellHeight,
+      radiusM: analysis.radius_m,
+      observerHeightM: analysis.observer_height_m,
+      ...(layer.nodata !== undefined ? { nodata: layer.nodata } : {}),
+    });
+    if (mask.consideredCells === 0) return { kind: 'empty' };
+
+    const polygons: LonLat[][][] = [];
+    for (let row = 0; row < height; row++) {
+      let col = 0;
+      while (col < width) {
+        while (col < width && mask.visible[row * width + col] === 0) col++;
+        if (col >= width) break;
+        const start = col;
+        while (col < width && mask.visible[row * width + col] === 1) col++;
+        const left = windowMinX + start * cellWidth;
+        const right = windowMinX + col * cellWidth;
+        const top = windowMaxY - row * cellHeight;
+        const bottom = top - cellHeight;
+        const ring: LonLat[] = [
+          this.fromNative(layer, { x: left, y: bottom }),
+          this.fromNative(layer, { x: right, y: bottom }),
+          this.fromNative(layer, { x: right, y: top }),
+          this.fromNative(layer, { x: left, y: top }),
+          this.fromNative(layer, { x: left, y: bottom }),
+        ];
+        polygons.push([ring]);
+      }
+    }
+
+    const visiblePercent = (mask.visibleCells / mask.consideredCells) * 100;
+    return {
+      kind: 'ok',
+      value: {
+        kind: 'features',
+        features: [
+          {
+            type: 'Feature',
+            geometry: { type: 'MultiPolygon', coordinates: polygons },
+            properties: {
+              name: 'Visible surface',
+              radius_m: analysis.radius_m,
+              observer_height_m: analysis.observer_height_m,
+              grid_m: analysis.grid_m,
+              visible_cells: mask.visibleCells,
+              considered_cells: mask.consideredCells,
+              visible_percent: Number(visiblePercent.toFixed(1)),
+            },
+          },
+        ],
+        truncated: false,
+        summary: `${visiblePercent.toFixed(1)}% visible within ${analysis.radius_m} m · ${analysis.grid_m} m model grid`,
+      },
+      aggregation: 'feature_list',
+      basis: 'modelled',
     };
   }
 

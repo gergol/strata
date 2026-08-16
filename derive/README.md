@@ -20,6 +20,13 @@ transforming upstream releases. That boundary is intentional: crop parcels,
 terrain products, and transmitter inventories have different extraction and
 join rules, while the final tiling and provenance contract must stay identical.
 
+The first raster recipe is `derive/vienna-surface-cog.sh`. It verifies the
+official Vienna DOM archive hash, average-resamples tile 35_4 from 0.5 m to a
+browser-sized 2 m surface model, writes a tiled/overviewed ZSTD COG, requires a
+bit-identical output hash, and validates the COG structure. The
+`publish-terrain` workflow uploads the COG and committed provenance sidecar to
+the immutable release named in that sidecar without replacing assets.
+
 Run the real integration smoke test from the repository root:
 
 ```sh

@@ -28,6 +28,7 @@
     aggregated: 'aggregated',
     sampled: 'sampled model value — not a statistic',
     nearest: 'nearest — searched around the point',
+    modelled: 'modelled locally from the surface raster',
   };
   const ERROR_LABEL: Record<string, string> = {
     upstream: 'upstream error',
@@ -47,7 +48,7 @@
     areaResult = null;
     loading = true;
     engine
-      .point(layer.id, target)
+      .point(layer.id, target, { zoom })
       .then((r) => {
         if (!active) return;
         result = r;
@@ -117,15 +118,19 @@
       </div>
     {:else}
       <div class="features">
-        <div class="value">{r.value.features.length}<span class="unit">found{r.value.truncated ? ' (list capped)' : ''}</span></div>
-        <ul>
-          {#each r.value.features.slice(0, 8) as f, i (i)}
-            {@const display = featureDisplay(f)}
-            <li>
-              {#if display.href}<a href={display.href} target="_blank" rel="noreferrer">{display.label}</a>{:else}{display.label}{/if}
-            </li>
-          {/each}
-        </ul>
+        {#if r.value.summary}
+          <div class="analysis-summary">{r.value.summary}</div>
+        {:else}
+          <div class="value">{r.value.features.length}<span class="unit">found{r.value.truncated ? ' (list capped)' : ''}</span></div>
+          <ul>
+            {#each r.value.features.slice(0, 8) as f, i (i)}
+              {@const display = featureDisplay(f)}
+              <li>
+                {#if display.href}<a href={display.href} target="_blank" rel="noreferrer">{display.label}</a>{:else}{display.label}{/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
     {/if}
     <div class="meta">
@@ -172,6 +177,12 @@
         <div class="state" role="status">querying…</div>
       {:else if result}
         {@render envelope(result)}
+      {/if}
+      {#if layer.terrainAnalysis}
+        <div class="analysis-note">
+          Surface viewshed at {layer.terrainAnalysis.observerHeightM} m eye height; {layer.terrainAnalysis.gridM} m model grid.
+          Click another covered point to recompute locally.
+        </div>
       {/if}
       {#if layer.modes.includes('tile')}
         <div class="area">
@@ -274,6 +285,18 @@
   }
   .features a {
     color: #9dc9f5;
+  }
+  .analysis-summary {
+    color: #d9e7d5;
+    font-size: 1rem;
+    font-weight: 650;
+    margin: 0.5rem 0;
+  }
+  .analysis-note {
+    color: #8fa398;
+    font-size: 0.76rem;
+    line-height: 1.4;
+    margin-top: 0.4rem;
   }
   .meta {
     display: flex;

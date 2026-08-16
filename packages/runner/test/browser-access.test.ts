@@ -111,6 +111,26 @@ describe('browser access verification', () => {
     expect(checked).toEqual({ ok: true });
   });
 
+  it('accepts an immutable range-readable GitHub Release COG materialization', async () => {
+    const layer = parseDescriptor({
+      ...JSON.parse(JSON.stringify(base)),
+      id: 'release_cog',
+      adapter: 'cog',
+      endpoint: 'https://github.com/gergol/strata/releases/download/terrain-v1/terrain.cog.tif',
+      value_type: 'numeric',
+      unit: 'm',
+      scale_factor: 1,
+      coverage: 'global',
+      browser_access: 'materialized',
+      params: { materialization_kind: 'release_asset' },
+    });
+    const result = await checkBrowserAccess(layer, [], async () => new Response('x', {
+      status: 206,
+      headers: { 'access-control-allow-origin': '*' },
+    }));
+    expect(result).toEqual({ ok: true });
+  });
+
   it('expands and verifies the actual browser overlay tile URL', async () => {
     const overlayLayer = parseDescriptor({
       ...JSON.parse(JSON.stringify(base)),

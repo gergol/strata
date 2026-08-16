@@ -173,14 +173,33 @@ const rasterOverlaySchema = z
     }
   });
 
-const featureStyleSchema = z
+const featureStyleSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('circle'),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      radius: z.number().min(2).max(16).default(6),
+      opacity: z.number().min(0).max(1).default(0.9),
+      stroke_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#ffffff'),
+      stroke_width: z.number().min(0).max(5).default(1.5),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('fill'),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      opacity: z.number().min(0).max(1).default(0.45),
+      outline_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#ffffff'),
+    })
+    .strict(),
+]);
+
+const terrainAnalysisSchema = z
   .object({
-    kind: z.literal('circle'),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-    radius: z.number().min(2).max(16).default(6),
-    opacity: z.number().min(0).max(1).default(0.9),
-    stroke_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#ffffff'),
-    stroke_width: z.number().min(0).max(5).default(1.5),
+    kind: z.literal('viewshed'),
+    radius_m: z.number().int().min(100).max(1_500),
+    observer_height_m: z.number().min(0.5).max(20).default(1.7),
+    grid_m: z.number().int().min(2).max(30),
   })
   .strict();
 
@@ -223,6 +242,8 @@ export const layerDescriptorSchema = z
     overlay: rasterOverlaySchema.optional(),
     /** Descriptor-driven styling for vector features returned by point queries. */
     feature_style: featureStyleSchema.optional(),
+    /** Local terrain analysis performed against a windowed projected COG. */
+    terrain_analysis: terrainAnalysisSchema.optional(),
     /** Adapter-specific configuration (e.g. an Overpass QL template). Validated by the adapter. */
     params: z.record(z.unknown()).optional(),
   })
@@ -307,6 +328,29 @@ export const layerDescriptorSchema = z
         path: ['feature_style'],
         message: 'feature_style requires a feature-valued point-query layer',
       });
+    }
+    if (d.terrain_analysis) {
+      if (d.adapter !== 'cog' || d.value_type !== 'feature' || !d.modes.includes('point')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['terrain_analysis'],
+          message: 'terrain_analysis requires a feature-valued point-query COG layer',
+        });
+      }
+      if (d.crs === 'EPSG:4326') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['crs'],
+          message: 'terrain_analysis requires a projected CRS whose coordinates are metres',
+        });
+      }
+      if (d.feature_style?.kind !== 'fill') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['feature_style'],
+          message: 'terrain_analysis requires a fill feature_style',
+        });
+      }
     }
     const hasQueryMode = d.modes.includes('point') || d.modes.includes('tile');
     if (!hasQueryMode && d.modes.includes('overlay') && d.health_assertion.expect_overlay !== true) {

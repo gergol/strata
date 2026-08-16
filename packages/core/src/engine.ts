@@ -42,20 +42,38 @@ export interface LayerSummary {
   provenance: string;
   /** Descriptor-driven M3 rendering metadata; absent for query-only layers. */
   overlay?: RasterOverlaySummary;
-  featureStyle?: {
-    kind: 'circle';
-    color: string;
-    radius: number;
-    opacity: number;
-    strokeColor: string;
-    strokeWidth: number;
+  featureStyle?:
+    | {
+        kind: 'circle';
+        color: string;
+        radius: number;
+        opacity: number;
+        strokeColor: string;
+        strokeWidth: number;
+      }
+    | {
+        kind: 'fill';
+        color: string;
+        opacity: number;
+        outlineColor: string;
+      };
+  terrainAnalysis?: {
+    kind: 'viewshed';
+    radiusM: number;
+    observerHeightM: number;
+    gridM: number;
   };
   /** R8.3: surfaced whenever the layer's health assertion is failing. */
   degraded: boolean;
 }
 
+export interface PointQueryOptions {
+  /** Current map zoom when a point model has an explicit semantic zoom floor. */
+  zoom?: number;
+}
+
 export interface QueryEngine {
-  point(layerId: string, at: LonLat): Promise<LayerResult>;
+  point(layerId: string, at: LonLat, options?: PointQueryOptions): Promise<LayerResult>;
   tile(layerId: string, tile: Tile): Promise<LayerResult>;
   layers(): Promise<LayerSummary[]>;
 }

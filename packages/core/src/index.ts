@@ -60,7 +60,7 @@ export type {
 } from './envelope.js';
 
 export type { CacheEntry, KVCache, IO } from './io.js';
-export type { LayerSummary, QueryEngine, RasterOverlaySummary } from './engine.js';
+export type { LayerSummary, PointQueryOptions, QueryEngine, RasterOverlaySummary } from './engine.js';
 
 export { AdapterError } from './adapter.js';
 export type { Adapter, AdapterOutcome } from './adapter.js';
@@ -81,6 +81,8 @@ export { BBoxVectorAdapter } from './adapters/bbox-vector.js';
 export { RegionAdapter, parseEnergyChartsPublicPower } from './adapters/region.js';
 export { findContainingFeature, pointInFeature } from './geometry.js';
 export type { GeoJsonFeature, GeoJsonFeatureCollection } from './geometry.js';
+export { computeViewshedMask } from './terrain.js';
+export type { ViewshedGrid, ViewshedMask } from './terrain.js';
 
 import { CogAdapter as CogAdapterClass } from './adapters/cog.js';
 import { BBoxVectorAdapter as BBoxVectorAdapterClass } from './adapters/bbox-vector.js';

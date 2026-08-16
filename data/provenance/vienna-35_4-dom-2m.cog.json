@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "id": "vienna_35_4_dom_2m",
+  "generated_at": "2026-08-16T21:15:00Z",
+  "source": {
+    "product": "Digitales Oberflächenmodell (DOM) Wien, tile 35_4",
+    "url": "https://www.wien.gv.at/ma41datenviewer/downloads/geodaten/dom_tif/35_4_dom_tif.zip",
+    "product_page": "https://www.wien.gv.at/stadtplanung/digitales-gelaendemodell-daten-beziehen",
+    "survey_year": 2015,
+    "sha256": "26ac8f8f605758826ac13298b39e2d7c6799646a0df183bab9f1e189368d6c42",
+    "licence": "CC-BY-4.0",
+    "attribution": "Datenquelle: Stadt Wien – data.wien.gv.at"
+  },
+  "transformations": [
+    "Extract 35_4_dom.tif from the pinned source ZIP",
+    "Average-resample the 0.5 m Float64 surface model onto a target-aligned 2 m grid in its native MGI / Austria GK East projection",
+    "Convert to Float32 Cloud-Optimized GeoTIFF with 256 px blocks, ZSTD level 9 compression, internal mask, and automatic overviews",
+    "Validate the output with rio-cogeo 7.0.2"
+  ],
+  "tools": {
+    "python": "3.12",
+    "rasterio": "1.5.1",
+    "rio_cogeo": "7.0.2"
+  },
+  "output": {
+    "asset": "vienna-35_4-dom-2m.cog.tif",
+    "release_tag": "terrain-vienna-35-4-v1",
+    "sha256": "44a9748fc386791511c649a7170f6eb6786501bb37b4621306e9105e4d94f8dc",
+    "bytes": 7255805,
+    "crs": "EPSG:31256",
+    "bounds": [2498.0, 340000.0, 5000.0, 342502.0],
+    "resolution_m": 2,
+    "shape": [1251, 1251],
+    "nodata": -9999,
+    "vertical_reference": "Wiener Null; constant vertical datum offsets cancel in line-of-sight slope comparisons"
+  }
+}

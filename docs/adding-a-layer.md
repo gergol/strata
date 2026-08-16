@@ -31,7 +31,9 @@ GBFS station layers use `adapter: bbox_vector`, `params.protocol: gbfs`, and the
 
 Raster overlays with a daily time dimension put `{date}` in every tile URL and declare `overlay.time: { kind: daily_utc, default_offset_days, max_age_days }`. The UI resolves the default UTC date, bounds a date picker, and rebuilds the source when it changes; browser health resolves the same default before fetching a real tile. `max_zoom` is the source's native tile ceiling—MapLibre may overzoom it rather than hiding the layer.
 
-Feature-valued point layers may declare a strict `feature_style` circle contract (colour, radius, opacity, stroke). This style travels through `LayerSummary` and controls the actual MapLibre result overlay; the domain colour is only a fallback.
+Feature-valued point layers may declare a strict `feature_style` circle contract (colour, radius, opacity, stroke) or fill contract (colour, opacity, outline). This style travels through `LayerSummary` and controls the actual MapLibre result overlay; the domain colour is only a fallback.
+
+A local viewshed remains an A2 COG layer and adds `terrain_analysis: { kind: viewshed, radius_m, observer_height_m, grid_m }`. It must use a projected metre CRS, point mode, feature values, fill styling, bounded coverage inset by at least the analysis radius, and z13+ semantics. The worker returns `basis: modelled`; provenance must identify whether the surface is DTM or DSM and disclose grid resolution, occluders, survey vintage, and that it is not a surveyed sightline.
 
 Overlay mode is a rendering contract independent of the analytical adapter. A raster overlay declares one or more XYZ/WMTS/WMS tile templates, tile size, zoom bounds, default opacity, and an optional structured legend. The client understands `{z}`, `{x}`, `{y}`, and MapLibre's `{bbox-epsg-3857}` token. Keep visual and analytical semantics separate: a rendered WMS PNG can be an overlay for a COG-backed layer, but it cannot replace numeric point values or tile statistics.
 
@@ -85,6 +87,8 @@ If direct access fails, use the mitigation ladder in order:
 3. consider the named stateless CORS shim only for a must-have live source.
 
 Materialized region layers declare a source endpoint, region list, source-age limit, and deployed-artifact age limit in `params`. The materializer publishes a versioned envelope atomically, and the UI shows the upstream timestamp. A failed refresh preserves the previous Pages deployment; health turns red when the deployed envelope exceeds its freshness limit.
+
+Large immutable COGs use `browser_access: materialized` with `params.materialization_kind: release_asset` and an exact GitHub Release download URL. The browser verifier still requires HTTP 206 and production-origin CORS before accepting the asset; the committed provenance sidecar pins its source and output hashes.
 
 ## 5. Verify semantics and failure states
 

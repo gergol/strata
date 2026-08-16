@@ -22,7 +22,7 @@
   let mapError = $state<string | null>(null);
   let locationStatus = $state<'idle' | 'locating' | 'found' | 'error'>('idle');
   let locationMessage = $state<string | null>(null);
-  let mappedLayers = $state<Record<string, { name: string; count: number; color: string }>>({});
+  let mappedLayers = $state<Record<string, { name: string; count: number; color: string; noun: 'point' | 'area' }>>({});
   let map: maplibregl.Map | undefined;
   let targetMarker: maplibregl.Marker | undefined;
   let locationRequestId = 0;
@@ -39,31 +39,26 @@
     );
   });
 
-  const overlayData = new Map<string, { layer: LayerSummary; features: GeoJSON.Feature<GeoJSON.Point>[] }>();
+  const overlayData = new Map<string, { layer: LayerSummary; features: GeoJSON.Feature<GeoJSON.Geometry>[] }>();
   const DOMAIN_COLORS: Partial<Record<LayerSummary['domain'], string>> = {
     built: '#35a7ff',
     energy: '#f5a742',
     subsurface: '#9b7ede',
   };
 
-  function featureOverlayIds(layerId: string): { source: string; circles: string } {
+  function featureOverlayIds(layerId: string): { source: string; rendering: string } {
     return {
       source: `strata-features-${layerId}`,
-      circles: `strata-features-${layerId}-circles`,
+      rendering: `strata-features-${layerId}-rendering`,
     };
   }
 
-  function isPointFeature(value: unknown): value is GeoJSON.Feature<GeoJSON.Point> {
+  function isRenderableFeature(value: unknown): value is GeoJSON.Feature<GeoJSON.Geometry> {
     if (typeof value !== 'object' || value === null) return false;
     const feature = value as { type?: unknown; geometry?: { type?: unknown; coordinates?: unknown } | null };
-    const coordinates = feature.geometry?.coordinates;
-    return (
-      feature.type === 'Feature' &&
-      feature.geometry?.type === 'Point' &&
-      Array.isArray(coordinates) &&
-      coordinates.length >= 2 &&
-      coordinates.slice(0, 2).every((coordinate) => typeof coordinate === 'number' && Number.isFinite(coordinate))
-    );
+    return feature.type === 'Feature' &&
+      (feature.geometry?.type === 'Point' || feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon') &&
+      Array.isArray(feature.geometry.coordinates);
   }
 
   function syncFeatureOverlay(layerId: string): void {
@@ -71,7 +66,7 @@
     const overlay = overlayData.get(layerId);
     if (!currentMap || !overlay || !currentMap.isStyleLoaded()) return;
     const ids = featureOverlayIds(layerId);
-    const data: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+    const data: GeoJSON.FeatureCollection<GeoJSON.Geometry> = {
       type: 'FeatureCollection',
       features: overlay.features,
     };
@@ -82,25 +77,41 @@
     }
     currentMap.addSource(ids.source, { type: 'geojson', data });
     const style = overlay.layer.featureStyle;
-    currentMap.addLayer({
-      id: ids.circles,
-      type: 'circle',
-      source: ids.source,
-      paint: {
-        'circle-radius': style
-          ? ['interpolate', ['linear'], ['zoom'], 10, Math.max(2, style.radius * 0.65), 16, style.radius]
-          : ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 8],
-        'circle-color': style?.color ?? DOMAIN_COLORS[overlay.layer.domain] ?? '#35a7ff',
-        'circle-opacity': style?.opacity ?? 0.9,
-        'circle-stroke-color': style?.strokeColor ?? '#ffffff',
-        'circle-stroke-width': style?.strokeWidth ?? 1.5,
-      },
-    });
+    const before = currentMap.getStyle().layers?.find((styleLayer) => styleLayer.type === 'symbol')?.id;
+    if (style?.kind === 'fill') {
+      currentMap.addLayer({
+        id: ids.rendering,
+        type: 'fill',
+        source: ids.source,
+        filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+        paint: {
+          'fill-color': style.color,
+          'fill-opacity': style.opacity,
+          'fill-outline-color': style.outlineColor,
+        },
+      }, before);
+    } else {
+      currentMap.addLayer({
+        id: ids.rendering,
+        type: 'circle',
+        source: ids.source,
+        filter: ['==', ['geometry-type'], 'Point'],
+        paint: {
+          'circle-radius': style
+            ? ['interpolate', ['linear'], ['zoom'], 10, Math.max(2, style.radius * 0.65), 16, style.radius]
+            : ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 8],
+          'circle-color': style?.color ?? DOMAIN_COLORS[overlay.layer.domain] ?? '#35a7ff',
+          'circle-opacity': style?.opacity ?? 0.9,
+          'circle-stroke-color': style?.strokeColor ?? '#ffffff',
+          'circle-stroke-width': style?.strokeWidth ?? 1.5,
+        },
+      }, before);
+    }
   }
 
   function showResultOnMap(layer: LayerSummary, result: LayerResult): void {
     const features = result.status === 'ok' && result.value.kind === 'features'
-      ? result.value.features.filter(isPointFeature)
+      ? result.value.features.filter(isRenderableFeature)
       : [];
     overlayData.set(layer.id, { layer, features });
     syncFeatureOverlay(layer.id);
@@ -116,6 +127,7 @@
         name: layer.name,
         count: features.length,
         color: layer.featureStyle?.color ?? DOMAIN_COLORS[layer.domain] ?? '#35a7ff',
+        noun: layer.featureStyle?.kind === 'fill' ? 'area' : 'point',
       },
     };
   }
@@ -320,7 +332,7 @@
     {#if Object.keys(mappedLayers).length > 0}
       <div class="map-feature-summary" role="status" aria-live="polite">
         {#each Object.entries(mappedLayers) as [id, mapped] (id)}
-          <span><i style={`background:${mapped.color}`}></i>{mapped.count} map {mapped.count === 1 ? 'point' : 'points'} · {mapped.name}</span>
+          <span><i style={`background:${mapped.color}`}></i>{mapped.count} map {mapped.noun}{mapped.count === 1 ? '' : 's'} · {mapped.name}</span>
         {/each}
       </div>
     {/if}

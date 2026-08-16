@@ -14,7 +14,7 @@ import type { AdapterId, LayerDescriptor } from './descriptor.js';
 import { descriptorHash, parseDescriptor } from './descriptor.js';
 import type { LayerResult, OkResult } from './envelope.js';
 import { noCoverage, queryError, zoomInvalid } from './envelope.js';
-import type { LayerSummary, QueryEngine } from './engine.js';
+import type { LayerSummary, PointQueryOptions, QueryEngine } from './engine.js';
 import type { IO } from './io.js';
 import { CircuitOpenError, RateLimiter } from './limiter.js';
 import type { BBox, LonLat, Tile } from './tile.js';
@@ -113,22 +113,45 @@ export class LocalQueryEngine implements QueryEngine {
         };
       }
       if (d.feature_style) {
-        summary.featureStyle = {
-          kind: d.feature_style.kind,
-          color: d.feature_style.color,
-          radius: d.feature_style.radius,
-          opacity: d.feature_style.opacity,
-          strokeColor: d.feature_style.stroke_color,
-          strokeWidth: d.feature_style.stroke_width,
+        summary.featureStyle = d.feature_style.kind === 'circle'
+          ? {
+              kind: 'circle',
+              color: d.feature_style.color,
+              radius: d.feature_style.radius,
+              opacity: d.feature_style.opacity,
+              strokeColor: d.feature_style.stroke_color,
+              strokeWidth: d.feature_style.stroke_width,
+            }
+          : {
+              kind: 'fill',
+              color: d.feature_style.color,
+              opacity: d.feature_style.opacity,
+              outlineColor: d.feature_style.outline_color,
+            };
+      }
+      if (d.terrain_analysis) {
+        summary.terrainAnalysis = {
+          kind: d.terrain_analysis.kind,
+          radiusM: d.terrain_analysis.radius_m,
+          observerHeightM: d.terrain_analysis.observer_height_m,
+          gridM: d.terrain_analysis.grid_m,
         };
       }
       return summary;
     });
   }
 
-  async point(layerId: string, at: LonLat): Promise<LayerResult> {
+  async point(layerId: string, at: LonLat, options: PointQueryOptions = {}): Promise<LayerResult> {
     const layer = this.requireLayer(layerId);
     this.requireMode(layer.descriptor, 'point');
+    if (layer.descriptor.terrain_analysis && options.zoom !== undefined) {
+      const [zMin, zMax] = layer.descriptor.zoom_valid;
+      if (options.zoom < zMin || options.zoom > zMax) {
+        return zoomInvalid(
+          `'${layer.descriptor.name}' is only computed between z${zMin} and z${zMax} (map at z${options.zoom})`,
+        );
+      }
+    }
     if (!this.covers(layer.descriptor, [at[0], at[1], at[0], at[1]])) return noCoverage();
     const cacheKey = `${layerId}:${layer.hash}:point:${at[0].toFixed(6)},${at[1].toFixed(6)}`;
     return this.run(layer, cacheKey, (adapter, io) => adapter.point(layer.descriptor, at, io));

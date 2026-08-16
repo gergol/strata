@@ -162,6 +162,29 @@ describe('descriptor validation (R6.2, R6.3, R8.4)', () => {
     expect(d.aggregation).toBeUndefined();
   });
 
+  it('strictly validates a projected COG viewshed contract and fill style', () => {
+    const viewshed = {
+      ...valid,
+      id: 'vienna_viewshed',
+      domain: 'terrain',
+      crs: 'EPSG:31256',
+      modes: ['point'],
+      value_type: 'feature',
+      aggregation: undefined,
+      unit: undefined,
+      native_unit: undefined,
+      scale_factor: undefined,
+      terrain_analysis: { kind: 'viewshed', radius_m: 500, observer_height_m: 1.7, grid_m: 10 },
+      feature_style: { kind: 'fill', color: '#7fd36b', opacity: 0.45, outline_color: '#b9f0ad' },
+      health_assertion: { at: [16.3826, 48.2096], expect_min_count: 1 },
+    };
+    const descriptor = parseDescriptor(viewshed);
+    expect(descriptor.terrain_analysis).toMatchObject({ radius_m: 500, grid_m: 10 });
+    failsMentioning({ ...viewshed, crs: 'EPSG:4326' }, 'projected CRS');
+    failsMentioning({ ...viewshed, feature_style: { kind: 'circle', color: '#7fd36b' } }, 'fill feature_style');
+    failsMentioning({ ...viewshed, terrain_analysis: { ...viewshed.terrain_analysis, radius_m: 2_000 } }, 'radius_m');
+  });
+
   it('validates a descriptor-driven raster overlay contract', () => {
     const overlay = {
       kind: 'raster',

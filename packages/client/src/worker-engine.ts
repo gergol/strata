@@ -1,5 +1,5 @@
 /** QueryEngine implementation that proxies to the engine worker (plan §4.5). */
-import type { LayerResult, LayerSummary, LonLat, QueryEngine, Tile } from '@strata/core';
+import type { LayerResult, LayerSummary, LonLat, PointQueryOptions, QueryEngine, Tile } from '@strata/core';
 
 interface Reply {
   id: number;
@@ -33,8 +33,8 @@ export class WorkerQueryEngine implements QueryEngine {
     });
   }
 
-  point(layerId: string, at: LonLat): Promise<LayerResult> {
-    return this.call('point', [layerId, at]);
+  point(layerId: string, at: LonLat, options?: PointQueryOptions): Promise<LayerResult> {
+    return this.call('point', [layerId, at, options]);
   }
 
   tile(layerId: string, tile: Tile): Promise<LayerResult> {

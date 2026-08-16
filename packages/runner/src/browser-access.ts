@@ -117,6 +117,13 @@ export async function checkBrowserAccess(
   }
 
   if (layer.browser_access === 'materialized') {
+    if (layer.params?.['materialization_kind'] === 'release_asset') {
+      const url = new URL(layer.endpoint);
+      if (url.hostname !== 'github.com' || !url.pathname.includes('/releases/download/')) {
+        return result(false, 'release_asset materialization must use an immutable GitHub Release download URL');
+      }
+      return result(true);
+    }
     if (layer.params?.['materialization_kind'] === 'static_index') {
       const url = layer.endpoint;
       if (new URL(url).origin !== APP_ORIGIN) {

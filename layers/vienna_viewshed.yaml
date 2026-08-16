@@ -1,0 +1,41 @@
+# M2.2a — first fully local terrain-analysis proof. The source City of Vienna
+# surface model is materialized as an immutable 2 m COG; the browser reads only
+# a 500 m window and computes the viewshed in its worker.
+id: vienna_surface_viewshed
+name: Surface viewshed (central Vienna)
+domain: terrain
+adapter: cog
+endpoint: https://github.com/gergol/strata/releases/download/terrain-vienna-35-4-v1/vienna-35_4-dom-2m.cog.tif
+crs: EPSG:31256
+modes: [point]
+zoom_valid: [13, 22]
+value_type: feature
+nodata: -9999
+ttl: 30d
+rate_limit:
+  max_concurrent: 2
+  min_interval_ms: 0
+licence: CC-BY-4.0
+commercial_use: true
+attribution: "Datenquelle: Stadt Wien – data.wien.gv.at"
+attribution_url: https://www.wien.gv.at/stadtplanung/digitales-gelaendemodell-daten-beziehen
+health_assertion:
+  at: [16.38259, 48.20964]
+  expect_min_count: 1
+# Inset by the 500 m analysis radius so every accepted point has a complete window.
+coverage:
+  bbox: [16.373, 48.203, 16.392, 48.2163]
+provenance_note: "Modelled locally from the City of Vienna 2015 airborne-laser surface model tile 35_4, averaged to a deterministic 2 m COG; surface heights and occlusion include buildings and vegetation, and the result is not a surveyed sightline"
+browser_access: materialized
+terrain_analysis:
+  kind: viewshed
+  radius_m: 500
+  observer_height_m: 1.7
+  grid_m: 10
+feature_style:
+  kind: fill
+  color: "#71cf72"
+  opacity: 0.42
+  outline_color: "#b7efad"
+params:
+  materialization_kind: release_asset

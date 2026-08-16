@@ -178,6 +178,26 @@ describe('gates (R5.1–R5.3)', () => {
     const w = makeWorld();
     await expect(w.engine.point('nope', [0, 0])).rejects.toThrow(/unknown layer/);
   });
+
+  it('rejects terrain analysis below its semantic zoom floor before opening the COG', async () => {
+    const w = makeWorld({
+      id: 'terrain_view',
+      domain: 'terrain',
+      crs: 'EPSG:31256',
+      modes: ['point'],
+      zoom_valid: [13, 22],
+      value_type: 'feature',
+      aggregation: undefined,
+      unit: undefined,
+      scale_factor: undefined,
+      terrain_analysis: { kind: 'viewshed', radius_m: 500, observer_height_m: 1.7, grid_m: 10 },
+      feature_style: { kind: 'fill', color: '#71cf72' },
+      health_assertion: { at: [16.38, 48.21], expect_min_count: 1 },
+    });
+    const result = await w.engine.point('terrain_view', [16.38, 48.21], { zoom: 12 });
+    expect(result).toMatchObject({ status: 'zoom_invalid' });
+    expect(w.calls()).toBe(0);
+  });
 });
 
 describe('failure handling (R7.6)', () => {
