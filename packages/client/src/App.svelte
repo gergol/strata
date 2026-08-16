@@ -18,6 +18,7 @@
   let zoom = $state(12);
   let epoch = $state(0);
   let showSettings = $state(false);
+  let layerSearch = $state('');
   let mapError = $state<string | null>(null);
   let mappedLayers = $state<Record<string, { name: string; count: number; color: string }>>({});
   let map: maplibregl.Map | undefined;
@@ -26,6 +27,13 @@
     layers.filter((layer): layer is LayerSummary & { overlay: NonNullable<LayerSummary['overlay']> } => layer.overlay !== undefined),
   );
   const queryLayers = $derived(layers.filter((layer) => layer.modes.includes('point')));
+  const visibleQueryLayers = $derived.by(() => {
+    const query = layerSearch.trim().toLocaleLowerCase();
+    if (!query) return queryLayers;
+    return queryLayers.filter((layer) =>
+      `${layer.name} ${layer.domain}`.toLocaleLowerCase().includes(query),
+    );
+  });
 
   const overlayData = new Map<string, { layer: LayerSummary; features: GeoJSON.Feature<GeoJSON.Point>[] }>();
   const DOMAIN_COLORS: Partial<Record<LayerSummary['domain'], string>> = {
@@ -245,10 +253,22 @@
 
     {#if target}
       <div class="coords">{target[1].toFixed(5)}, {target[0].toFixed(5)} · z{zoom}</div>
+      <div class="catalogue-tools">
+        <label>
+          <span>Filter layers</span>
+          <input type="search" bind:value={layerSearch} placeholder="Name or domain" />
+        </label>
+        <span class="catalogue-count" aria-live="polite">
+          {visibleQueryLayers.length} of {queryLayers.length} query layers
+        </span>
+      </div>
       <div class="stack">
-        {#each queryLayers as layer (layer.id)}
+        {#each visibleQueryLayers as layer (layer.id)}
           <LayerPanel {engine} {layer} {target} {zoom} {epoch} onResult={showResultOnMap} />
         {/each}
+        {#if visibleQueryLayers.length === 0}
+          <p class="hint dim">No layers match this filter.</p>
+        {/if}
       </div>
     {:else}
       <p class="hint">Click anywhere on the map to ask: <em>what can I find out about this place?</em></p>
@@ -391,6 +411,37 @@
     flex-direction: column;
     gap: 0.5rem;
   }
+  .catalogue-tools {
+    display: flex;
+    align-items: end;
+    gap: 0.65rem;
+  }
+  .catalogue-tools label {
+    display: grid;
+    flex: 1;
+    gap: 0.2rem;
+    color: #9aa3ad;
+    font-size: 0.72rem;
+  }
+  .catalogue-tools input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #343c47;
+    border-radius: 6px;
+    background: #191d23;
+    color: #e6e8eb;
+    padding: 0.45rem 0.55rem;
+  }
+  .catalogue-tools input:focus-visible {
+    outline: 2px solid #7ab8f5;
+    outline-offset: 1px;
+  }
+  .catalogue-count {
+    color: #6f7984;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    padding-bottom: 0.45rem;
+  }
   .overlay-section h2 {
     margin-top: 0;
   }
@@ -452,6 +503,14 @@
       border-left: none;
       border-top: 1px solid #2c333c;
       flex: 1;
+    }
+    .catalogue-tools {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .catalogue-count {
+      padding-bottom: 0;
     }
   }
 </style>

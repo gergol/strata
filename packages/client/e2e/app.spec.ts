@@ -46,9 +46,13 @@ async function mockExternalData(page: Page): Promise<void> {
       headers: corsHeaders,
     }),
   );
-  await page.route('https://overpass-api.de/api/interpreter', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(overpassFixture), headers: corsHeaders }),
-  );
+  await page.route('https://overpass-api.de/api/interpreter', (route) => {
+    const query = decodeURIComponent(route.request().postData() ?? '');
+    const body = query.includes('out count;')
+      ? { elements: [{ type: 'count', id: 0, tags: { total: '1' } }] }
+      : overpassFixture;
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body), headers: corsHeaders });
+  });
   await page.route('https://maps.isric.org/mapserv?**', (route) =>
     route.fulfill({ status: 200, contentType: 'image/png', body: transparentPng, headers: corsHeaders }),
   );
@@ -64,7 +68,7 @@ test.beforeEach(async ({ page }) => {
 test('queries the materialized energy and Overpass layers through the real worker', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('4 layers loaded.')).toBeVisible();
+  await expect(page.getByText('18 layers loaded.')).toBeVisible();
 
   const canvas = page.locator('.maplibregl-canvas');
   await expect(canvas).toBeVisible();
@@ -123,6 +127,28 @@ test('renders a descriptor-driven raster overlay with opacity and legend control
   await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
   await expect(page.locator('section.panel').filter({ hasText: 'WorldCover 2021' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Soil pH/ })).toBeVisible();
+});
+
+test('filters the expanded query catalogue by layer name or domain', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
+  const filter = page.getByRole('searchbox', { name: 'Filter layers' });
+
+  await expect(page.getByText('17 of 17 query layers')).toBeVisible();
+  await filter.fill('transport');
+  await expect(page.getByText('2 of 17 query layers')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Bicycle parking/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /EV charging stations/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Soil pH/ })).toHaveCount(0);
+
+  await filter.fill('bookcase');
+  await expect(page.getByText('1 of 17 query layers')).toBeVisible();
+  const bookcase = page.getByRole('button', { name: /Public bookcases/ });
+  await bookcase.click();
+  await expect(page.locator('section.panel').filter({ hasText: 'Public bookcases' }).locator('.value')).toContainText('1');
+
+  await filter.fill('no-such-layer');
+  await expect(page.getByText('No layers match this filter.')).toBeVisible();
 });
 
 test('stores and removes BYOK values without rendering the stored value', async ({ page }) => {
