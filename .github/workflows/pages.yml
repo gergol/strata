@@ -77,8 +77,13 @@ jobs:
         run: curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 3 https://gergol.github.io/strata/data/grid_generation_mix-at.json --output /dev/null
       - name: Verify live layers with bounded transient retries
         run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            layer_files=(layers/grid_generation_mix.yaml)
+          else
+            layer_files=(layers/*.yaml)
+          fi
           for attempt in 1 2 3; do
-            if npx tsx packages/runner/src/verify.ts verify layers/*.yaml; then
+            if npx tsx packages/runner/src/verify.ts verify "${layer_files[@]}"; then
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then

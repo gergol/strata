@@ -66,6 +66,24 @@ describe('minimum interval (R7.3)', () => {
     expect(starts[1]! - starts[0]!).toBeGreaterThanOrEqual(500);
     expect(starts[2]! - starts[1]!).toBeGreaterThanOrEqual(500);
   });
+
+  it('shares the strictest policy across wrappers in one provider group', async () => {
+    const clock = makeClock();
+    const limiter = new RateLimiter(clock);
+    const starts: number[] = [];
+    const recordingFetch = (async () => {
+      starts.push(clock.now());
+      return okResponse();
+    }) as unknown as typeof fetch;
+
+    const firstLayer = limiter.wrapFetch('overpass', { max_concurrent: 2, min_interval_ms: 250 }, recordingFetch);
+    const secondLayer = limiter.wrapFetch('overpass', { max_concurrent: 1, min_interval_ms: 1000 }, recordingFetch);
+    await firstLayer('https://x.test/first');
+    await secondLayer('https://x.test/second');
+    await firstLayer('https://x.test/third');
+
+    expect(starts).toEqual([0, 1000, 2000]);
+  });
 });
 
 describe('transient HTTP handling (R7.6)', () => {

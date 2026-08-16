@@ -7,6 +7,7 @@ export {
   layerDescriptorSchema,
   DescriptorValidationError,
   parseDescriptor,
+  loadDescriptorsYaml,
   loadDescriptorYaml,
   descriptorHash,
 } from './descriptor.js';

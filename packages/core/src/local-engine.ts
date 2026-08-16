@@ -168,7 +168,7 @@ export class LocalQueryEngine implements QueryEngine {
 
     const limitedIo: IO = {
       ...this.io,
-      fetch: this.limiter.wrapFetch(d.id, d.rate_limit, this.io.fetch),
+      fetch: this.limiter.wrapFetch(d.rate_limit.group ?? d.id, d.rate_limit, this.io.fetch),
     };
 
     let outcome: AdapterOutcome;

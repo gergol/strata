@@ -4,13 +4,13 @@
  * boundary is plain JSON — the same property that would let a proxy replace
  * this worker without touching the UI (plan §4.5).
  */
-import { LocalQueryEngine, defaultAdapters, loadDescriptorYaml } from '@strata/core';
+import { LocalQueryEngine, defaultAdapters, loadDescriptorsYaml } from '@strata/core';
 import { IdbCache } from './idb-cache';
 
 const STATUS_URL = 'https://raw.githubusercontent.com/gergol/strata/main/data/status/status.json';
 
 const engine = new LocalQueryEngine(
-  __LAYER_YAMLS__.map((yaml) => loadDescriptorYaml(yaml)),
+  __LAYER_YAMLS__.flatMap((yaml) => loadDescriptorsYaml(yaml)),
   {
     io: {
       fetch: (input, init) => fetch(input, init),

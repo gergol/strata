@@ -1,5 +1,5 @@
 /**
- * Per-layer politeness enforcement (R7.3, R7.6): concurrency cap, minimum
+ * Per-layer or shared-provider politeness enforcement (R7.3, R7.6): concurrency cap, minimum
  * request interval, transient HTTP/Retry-After handling with exponential backoff, and a
  * circuit breaker so a repeatedly failing layer stops being hammered instead
  * of retrying into a ban.
@@ -31,8 +31,8 @@ export interface LayerRateConfig {
 }
 
 export class CircuitOpenError extends Error {
-  constructor(layerId: string, retryAtMs: number) {
-    super(`circuit open for layer '${layerId}' until t+${retryAtMs}ms after repeated failures (R7.6)`);
+  constructor(requestGroup: string, retryAtMs: number) {
+    super(`circuit open for request group '${requestGroup}' until t+${retryAtMs}ms after repeated failures (R7.6)`);
     this.name = 'CircuitOpenError';
   }
 }
@@ -43,6 +43,8 @@ interface LayerState {
   nextAllowedStart: number;
   consecutiveFailures: number;
   openUntil: number;
+  maxConcurrent: number;
+  minIntervalMs: number;
 }
 
 const realClock: LimiterClock = {
@@ -68,32 +70,47 @@ export class RateLimiter {
     this.baseBackoffMs = opts.baseBackoffMs ?? 250;
   }
 
-  private state(layerId: string): LayerState {
-    let s = this.states.get(layerId);
+  private state(key: string, cfg?: LayerRateConfig): LayerState {
+    let s = this.states.get(key);
     if (!s) {
-      s = { active: 0, queue: [], nextAllowedStart: 0, consecutiveFailures: 0, openUntil: 0 };
-      this.states.set(layerId, s);
+      s = {
+        active: 0,
+        queue: [],
+        nextAllowedStart: 0,
+        consecutiveFailures: 0,
+        openUntil: 0,
+        maxConcurrent: cfg?.max_concurrent ?? Number.POSITIVE_INFINITY,
+        minIntervalMs: cfg?.min_interval_ms ?? 0,
+      };
+      this.states.set(key, s);
+    } else if (cfg) {
+      // A shared provider group always adopts the strictest declaration seen.
+      s.maxConcurrent = Math.min(s.maxConcurrent, cfg.max_concurrent);
+      s.minIntervalMs = Math.max(s.minIntervalMs, cfg.min_interval_ms);
     }
     return s;
   }
 
   /** Visible for the status endpoint / tests. */
-  circuitOpen(layerId: string): boolean {
-    return this.clock.now() < this.state(layerId).openUntil;
+  circuitOpen(requestGroup: string): boolean {
+    return this.clock.now() < this.state(requestGroup).openUntil;
   }
 
-  wrapFetch(layerId: string, cfg: LayerRateConfig, fetchImpl: typeof fetch): typeof fetch {
+  wrapFetch(requestGroup: string, cfg: LayerRateConfig, fetchImpl: typeof fetch): typeof fetch {
+    // Register policy when the wrapper is created, before any sibling wrapper
+    // can start a request under a looser declaration for the same group.
+    const sharedState = this.state(requestGroup, cfg);
     const wrapped = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      const s = this.state(layerId);
+      const s = sharedState;
 
       // Circuit gate. Past openUntil the next request is the probe that either
       // closes the circuit (success) or re-opens it (failure).
       if (this.clock.now() < s.openUntil) {
-        throw new CircuitOpenError(layerId, s.openUntil);
+        throw new CircuitOpenError(requestGroup, s.openUntil);
       }
 
       // Concurrency slot.
-      if (s.active >= cfg.max_concurrent) {
+      if (s.active >= s.maxConcurrent) {
         await new Promise<void>((resolve) => s.queue.push(resolve));
       }
       s.active++;
@@ -101,7 +118,7 @@ export class RateLimiter {
         // Minimum spacing between request starts.
         const wait = s.nextAllowedStart - this.clock.now();
         if (wait > 0) await this.clock.sleep(wait);
-        s.nextAllowedStart = Math.max(this.clock.now(), s.nextAllowedStart) + cfg.min_interval_ms;
+        s.nextAllowedStart = Math.max(this.clock.now(), s.nextAllowedStart) + s.minIntervalMs;
 
         let attempt = 0;
         for (;;) {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseDescriptor,
+  loadDescriptorsYaml,
   loadDescriptorYaml,
   descriptorHash,
   DescriptorValidationError,
@@ -50,6 +51,14 @@ describe('descriptor validation (R6.2, R6.3, R8.4)', () => {
     expect(d.id).toBe('soilgrids_ph');
     expect(d.browser_access).toBe('direct'); // default applied
     expect(d.search_beyond_tile).toBe(false);
+  });
+
+  it('accepts a shared provider rate-limit group', () => {
+    const d = parseDescriptor({
+      ...valid,
+      rate_limit: { group: 'overpass-api-de', max_concurrent: 1, min_interval_ms: 1000 },
+    });
+    expect(d.rate_limit.group).toBe('overpass-api-de');
   });
 
   it('rejects a descriptor missing licence, naming the field (R6.2)', () => {
@@ -268,6 +277,61 @@ provenance_note: "250 m modelled, not measured"
 
   it('reports invalid YAML as a validation error', () => {
     expect(() => loadDescriptorYaml('id: [unclosed')).toThrow(DescriptorValidationError);
+  });
+
+  it('expands a generic descriptor pack from shared defaults', () => {
+    const yaml = `
+defaults:
+  adapter: bbox_vector
+  endpoint: https://overpass.test/api/interpreter
+  crs: EPSG:4326
+  modes: [point, tile]
+  zoom_valid: [12, 19]
+  value_type: feature
+  aggregation: { primary: count, secondary: [feature_list] }
+  ttl: 7d
+  rate_limit: { group: overpass-test, max_concurrent: 1, min_interval_ms: 1000 }
+  licence: ODbL-1.0
+  commercial_use: true
+  attribution: OpenStreetMap contributors
+  coverage: global
+  provenance_note: Crowdsourced test data
+  params: { point_radius_m: 300, feature_cap: 100 }
+layers:
+  - id: osm_benches
+    name: Benches
+    domain: built
+    health_assertion: { at: [16.37, 48.21], expect_min_count: 1 }
+    params: { overpass_query: "nwr[amenity=bench]{{spatial}};" }
+  - id: osm_toilets
+    name: Public toilets
+    domain: built
+    health_assertion: { at: [16.36, 48.20], expect_status: empty }
+    params: { overpass_query: "nwr[amenity=toilets]{{spatial}};" }
+`;
+    const descriptors = loadDescriptorsYaml(yaml);
+    expect(descriptors.map((descriptor) => descriptor.id)).toEqual(['osm_benches', 'osm_toilets']);
+    expect(descriptors[0]?.rate_limit).toEqual({
+      group: 'overpass-test',
+      max_concurrent: 1,
+      min_interval_ms: 1000,
+    });
+    expect(descriptors[0]?.params).toEqual({
+      point_radius_m: 300,
+      feature_cap: 100,
+      overpass_query: 'nwr[amenity=bench]{{spatial}};',
+    });
+    expect(() => loadDescriptorYaml(yaml)).toThrow(/pack of 2/);
+  });
+
+  it('rejects duplicate ids inside a descriptor pack', () => {
+    const yaml = `
+defaults: ${JSON.stringify(valid)}
+layers:
+  - { id: duplicate_layer }
+  - { id: duplicate_layer }
+`;
+    expect(() => loadDescriptorsYaml(yaml)).toThrow(/duplicate id/);
   });
 });
 

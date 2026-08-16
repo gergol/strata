@@ -95,6 +95,8 @@ const healthAssertionSchema = z
 
 const rateLimitSchema = z
   .object({
+    /** Layers sharing an upstream use one limiter/circuit state (for example an Overpass instance). */
+    group: z.string().regex(/^[a-z0-9][a-z0-9_-]*$/).optional(),
     max_concurrent: z.number().int().min(1).default(2),
     min_interval_ms: z.number().int().min(0).default(0),
   })
@@ -310,15 +312,69 @@ export function parseDescriptor(input: unknown): LayerDescriptor {
   return result.data;
 }
 
-/** Parses and validates a YAML descriptor document (the authoring format of `layers/`). */
-export function loadDescriptorYaml(yamlText: string): LayerDescriptor {
+const descriptorPackSchema = z
+  .object({
+    defaults: z.record(z.unknown()),
+    layers: z.array(z.record(z.unknown())).nonempty(),
+  })
+  .strict();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function mergePackLayer(defaults: Record<string, unknown>, layer: Record<string, unknown>): Record<string, unknown> {
+  const merged = { ...defaults, ...layer };
+  for (const [key, value] of Object.entries(layer)) {
+    const defaultValue = defaults[key];
+    if (isRecord(defaultValue) && isRecord(value)) merged[key] = { ...defaultValue, ...value };
+  }
+  return merged;
+}
+
+/** Parses a YAML layer file containing either one descriptor or defaults plus a descriptor pack. */
+export function loadDescriptorsYaml(yamlText: string): LayerDescriptor[] {
   let parsed: unknown;
   try {
     parsed = parseYaml(yamlText);
   } catch (e) {
     throw new DescriptorValidationError(undefined, [`not valid YAML: ${(e as Error).message}`]);
   }
-  return parseDescriptor(parsed);
+  const isPack =
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    ('defaults' in parsed || 'layers' in parsed);
+  if (!isPack) return [parseDescriptor(parsed)];
+
+  const pack = descriptorPackSchema.safeParse(parsed);
+  if (!pack.success) {
+    throw new DescriptorValidationError(
+      undefined,
+      pack.error.issues.map((issue) =>
+        issue.path.length > 0 ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
+      ),
+    );
+  }
+  const descriptors = pack.data.layers.map((layer) => parseDescriptor(mergePackLayer(pack.data.defaults, layer)));
+  const seen = new Set<string>();
+  for (const descriptor of descriptors) {
+    if (seen.has(descriptor.id)) {
+      throw new DescriptorValidationError(descriptor.id, ['duplicate id in descriptor pack']);
+    }
+    seen.add(descriptor.id);
+  }
+  return descriptors;
+}
+
+/** Parses a YAML file that must contain exactly one descriptor. */
+export function loadDescriptorYaml(yamlText: string): LayerDescriptor {
+  const descriptors = loadDescriptorsYaml(yamlText);
+  if (descriptors.length !== 1) {
+    throw new DescriptorValidationError(undefined, [
+      `expected one descriptor, but the file contains a pack of ${descriptors.length}`,
+    ]);
+  }
+  return descriptors[0] as LayerDescriptor;
 }
 
 function canonicalJson(value: unknown): string {

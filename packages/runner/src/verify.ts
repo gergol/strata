@@ -19,11 +19,13 @@ import {
   CRS_REGISTRY,
   LocalQueryEngine,
   MemoryCache,
+  RateLimiter,
   defaultAdapters,
   loadDescriptorYaml,
+  loadDescriptorsYaml,
   isOk,
 } from '@strata/core';
-import type { IO, LayerResult } from '@strata/core';
+import type { IO, LayerDescriptor, LayerResult } from '@strata/core';
 import { APP_ORIGIN, checkBrowserAccess, type FetchObservation } from './browser-access.js';
 
 const USER_AGENT = 'Strata-verify/0.1 (+https://github.com/gergol/strata)';
@@ -103,29 +105,50 @@ function supportsPointHealth(descriptor: { modes: readonly string[] }): boolean 
   return descriptor.modes.includes('point');
 }
 
+function fileLayers(file: string): Array<{ label: string; descriptor: LayerDescriptor }> {
+  const descriptors = loadDescriptorsYaml(readFileSync(file, 'utf8'));
+  return descriptors.map((descriptor) => ({
+    label: descriptors.length === 1 ? file : `${file}#${descriptor.id}`,
+    descriptor,
+  }));
+}
+
 async function verify(files: string[]): Promise<number> {
   let failures = 0;
+  const limiter = new RateLimiter();
   for (const file of files) {
+    let layers: Array<{ label: string; descriptor: LayerDescriptor }>;
     try {
-      const descriptor = loadDescriptorYaml(readFileSync(file, 'utf8'));
-      const observations: FetchObservation[] = [];
-      const engine = new LocalQueryEngine([descriptor], {
-        io: makeIo(observations),
-        adapters: defaultAdapters(),
-      });
-      const result = supportsPointHealth(descriptor)
-        ? await engine.point(descriptor.id, descriptor.health_assertion.at)
-        : undefined;
-      const livePass = result ? checkAssertion(file, result, descriptor.health_assertion) : descriptor.health_assertion.expect_overlay === true;
-      const browser = await checkBrowserAccess(descriptor, observations);
-      const pass = livePass && browser.ok;
-      if (!result) console.log(`${file}: overlay tile canary`);
-      console.log(`${file}: browser ${browser.ok ? 'PASS' : `FAIL — ${browser.note}`}`);
-      console.log(`${file}: ${pass ? 'PASS' : 'FAIL'}`);
-      if (!pass) failures++;
+      layers = fileLayers(file);
     } catch (e) {
       console.log(`${file}: ERROR ${(e as Error).message}`);
       failures++;
+      continue;
+    }
+    for (const { label, descriptor } of layers) {
+      try {
+        const observations: FetchObservation[] = [];
+        const engine = new LocalQueryEngine([descriptor], {
+          io: makeIo(observations),
+          adapters: defaultAdapters(),
+          limiter,
+        });
+        const result = supportsPointHealth(descriptor)
+          ? await engine.point(descriptor.id, descriptor.health_assertion.at)
+          : undefined;
+        const livePass = result
+          ? checkAssertion(label, result, descriptor.health_assertion)
+          : descriptor.health_assertion.expect_overlay === true;
+        const browser = await checkBrowserAccess(descriptor, observations);
+        const pass = livePass && browser.ok;
+        if (!result) console.log(`${label}: overlay tile canary`);
+        console.log(`${label}: browser ${browser.ok ? 'PASS' : `FAIL — ${browser.note}`}`);
+        console.log(`${label}: ${pass ? 'PASS' : 'FAIL'}`);
+        if (!pass) failures++;
+      } catch (e) {
+        console.log(`${label}: ERROR ${(e as Error).message}`);
+        failures++;
+      }
     }
   }
   return failures === 0 ? 0 : 1;
@@ -175,26 +198,47 @@ async function sample(file: string, lon: number, lat: number): Promise<number> {
  */
 async function health(files: string[]): Promise<number> {
   const layers: Record<string, { ok: boolean; browserOk: boolean; status: string; checkedAt: string; note?: string }> = {};
+  const limiter = new RateLimiter();
   for (const file of files) {
-    const checkedAt = new Date().toISOString();
+    let loaded: Array<{ label: string; descriptor: LayerDescriptor }>;
     try {
-      const descriptor = loadDescriptorYaml(readFileSync(file, 'utf8'));
-      const observations: FetchObservation[] = [];
-      const engine = new LocalQueryEngine([descriptor], { io: makeIo(observations), adapters: defaultAdapters() });
-      const result = supportsPointHealth(descriptor)
-        ? await engine.point(descriptor.id, descriptor.health_assertion.at)
-        : undefined;
-      const liveOk = result ? checkAssertion(file, result, descriptor.health_assertion) : descriptor.health_assertion.expect_overlay === true;
-      const browser = await checkBrowserAccess(descriptor, observations);
-      const entry = {
-        ok: liveOk && browser.ok,
-        browserOk: browser.ok,
-        status: result?.status ?? (browser.ok ? 'overlay_ok' : 'error'),
-        checkedAt,
-      };
-      layers[descriptor.id] = browser.note ? { ...entry, note: browser.note } : entry;
+      loaded = fileLayers(file);
     } catch (e) {
-      layers[file] = { ok: false, browserOk: false, status: 'error', checkedAt, note: (e as Error).message };
+      layers[file] = {
+        ok: false,
+        browserOk: false,
+        status: 'error',
+        checkedAt: new Date().toISOString(),
+        note: (e as Error).message,
+      };
+      continue;
+    }
+    for (const { label, descriptor } of loaded) {
+      const checkedAt = new Date().toISOString();
+      try {
+        const observations: FetchObservation[] = [];
+        const engine = new LocalQueryEngine([descriptor], {
+          io: makeIo(observations),
+          adapters: defaultAdapters(),
+          limiter,
+        });
+        const result = supportsPointHealth(descriptor)
+          ? await engine.point(descriptor.id, descriptor.health_assertion.at)
+          : undefined;
+        const liveOk = result
+          ? checkAssertion(label, result, descriptor.health_assertion)
+          : descriptor.health_assertion.expect_overlay === true;
+        const browser = await checkBrowserAccess(descriptor, observations);
+        const entry = {
+          ok: liveOk && browser.ok,
+          browserOk: browser.ok,
+          status: result?.status ?? (browser.ok ? 'overlay_ok' : 'error'),
+          checkedAt,
+        };
+        layers[descriptor.id] = browser.note ? { ...entry, note: browser.note } : entry;
+      } catch (e) {
+        layers[descriptor.id] = { ok: false, browserOk: false, status: 'error', checkedAt, note: (e as Error).message };
+      }
     }
   }
   mkdirSync('data/status', { recursive: true });
