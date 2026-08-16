@@ -286,6 +286,10 @@ This package deliberately stops before vector overlay styling, standalone overla
 
 This completes the standalone raster branch of M1.1 and deliberately stops before vector overlay styling, time dimensions, and compare controls. WorldCover remains visual-only: PNG tiles do not provide analytical point classes or histograms, and its official multi-file COG distribution is still blocked for direct browser analytics by missing CORS headers.
 
+**M1.2 — Overpass POI packs (2026-08-16).** Generic YAML descriptor packs now expand shared defaults into independently strict descriptors, with one-level merging for nested configuration. Provider-level rate-limit groups share the strictest concurrency/spacing policy and circuit state across layers. The first pack supplies 15 spatially bounded `nwr` POI layers: drinking water, AEDs, toilets, benches, bicycle parking, parcel lockers, public bookcases, recycling, EV charging, post boxes, police, fire stations, hospitals, bunkers, and chimneys. Each has a positive live canary, ODbL attribution, explicit nearest-search semantics, and browser verification.
+
+Overpass point lists remain capped and visibly report truncation; tile counts now use the provider's exact `out count` result instead of silently presenting a capped list length. The client adds name/domain search with a live result count so 17 query layers remain usable on desktop and mobile. Hourly energy-materialization deploys verify only that materialized layer; full provider checks run on code pushes and the six-hour health schedule, avoiding unrelated hourly load on the volunteer Overpass service. Adding a conventional POI is now one compact pack entry rather than a duplicated full descriptor.
+
 ### Phase 2 — differentiators
 *Goal: the layers nobody has made pretty. All request/response or fully local; still no standing infrastructure.*
 

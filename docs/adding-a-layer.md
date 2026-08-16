@@ -43,6 +43,12 @@ Required decisions include:
 
 Descriptor changes invalidate cached results automatically because the descriptor hash is part of every cache key.
 
+When several layers share most fields, use a descriptor pack with top-level `defaults` and `layers`. Entry objects shallow-merge with defaults, while nested descriptor objects such as `params` and `rate_limit` merge one level so an entry only states its real differences. Each expanded descriptor still passes the complete strict schema independently; duplicate IDs fail the entire pack.
+
+Layers that call the same provider must share `rate_limit.group`. The limiter then applies the strictest concurrency/interval declaration and one circuit-breaker state across the group. For the main Overpass instance, use the existing `overpass-api-de` group rather than creating per-layer request lanes.
+
+The OSM POI pack uses bounded `nwr[...]{{spatial}};` templates so nodes, ways, and relations are handled uniformly. Point lists use `out center` and remain explicitly capped; tile counts use `out count` and therefore stay exact even for dense features. Add ordinary POIs to `layers/osm_pois.yaml`; provider defaults, attribution, and politeness settings should not be repeated.
+
 ## 4. Prove the browser boundary
 
 For `browser_access: direct`, test from the production origin `https://gergol.github.io`, not only with curl or Node:

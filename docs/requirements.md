@@ -129,7 +129,7 @@ health_assertion:
 coverage: global
 provenance_note: "250 m modelled, not measured"
 ```
-> *Schema note (v0.4):* the implemented descriptor schema v1 (`packages/core`) additionally defines optional `nodata` (sentinel filtered before scaling), `browser_access` (plan §5), `location_precision` (decision D5), `search_beyond_tile` (R4.4), and `params` (adapter-specific configuration). `value_type` is mandatory: it decides whether R6.3 (numeric) or R4.3 (categorical) binds. A layer declaring `overlay` mode also declares a validated rendering contract (tile templates, zoom bounds, opacity, and optional legend) independent of its analytical adapter. An overlay-only layer uses `health_assertion.expect_overlay: true`; the canary validates a rendered tile rather than inventing a point value.
+> *Schema note (v0.5):* the implemented descriptor schema v1 (`packages/core`) additionally defines optional `nodata` (sentinel filtered before scaling), `browser_access` (plan §5), `location_precision` (decision D5), `search_beyond_tile` (R4.4), and `params` (adapter-specific configuration). `value_type` is mandatory: it decides whether R6.3 (numeric) or R4.3 (categorical) binds. A layer declaring `overlay` mode also declares a validated rendering contract independent of its analytical adapter. An overlay-only layer uses `health_assertion.expect_overlay: true`; the canary validates a rendered tile rather than inventing a point value. A YAML file may contain one descriptor or a strict `defaults` + `layers` pack; `rate_limit.group` shares politeness and circuit state across layers using one provider.
 ### 6.1 Requirements
 - R6.1 No layer-specific logic outside its adapter. If a layer needs bespoke code, the adapter is under-specified.
 - R6.2 `licence`, `commercial_use`, `attribution` are mandatory fields, validated at load. A layer without them fails to register.
@@ -140,7 +140,7 @@ provenance_note: "250 m modelled, not measured"
 A viewport query fanning out across 30 layers is 30 concurrent requests, several of them against volunteer-run infrastructure.
 - R7.1 **Lazy fetch.** A layer is queried only when its panel is expanded or its overlay is enabled — never on every pan.
 - R7.2 **Tile-keyed cache** with per-layer TTL from the descriptor.
-- R7.3 **Per-layer concurrency cap and minimum interval**, enforced centrally, from the descriptor.
+- R7.3 **Per-layer or shared-provider concurrency cap and minimum interval**, enforced centrally from the descriptor. Layers using one upstream share `rate_limit.group`.
 - R7.4 **Debounce map movement** before dispatching any query.
 - R7.5 Correct `User-Agent` with contact details on every request (mandatory for MET Norway; strongly expected by Nominatim, Overpass, and most volunteer services).
 - R7.6 Respect `429` and `Retry-After` with exponential backoff; circuit-break a layer that repeatedly fails rather than retrying into a ban.
