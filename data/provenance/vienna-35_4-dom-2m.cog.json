@@ -24,7 +24,8 @@
   },
   "output": {
     "asset": "vienna-35_4-dom-2m.cog.tif",
-    "release_tag": "terrain-vienna-35-4-v1",
+    "pages_path": "packages/client/public/data/derived/vienna-35_4-dom-2m.cog.tif",
+    "release_archive_tag": "terrain-vienna-35-4-v1",
     "sha256": "44a9748fc386791511c649a7170f6eb6786501bb37b4621306e9105e4d94f8dc",
     "bytes": 7255805,
     "crs": "EPSG:31256",

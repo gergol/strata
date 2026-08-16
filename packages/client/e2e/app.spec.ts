@@ -116,7 +116,7 @@ async function mockExternalData(page: Page): Promise<void> {
   await page.route('https://mapsneu.wien.gv.at/wmts/lb/**', (route) =>
     route.fulfill({ status: 200, contentType: 'image/jpeg', body: transparentPng, headers: corsHeaders }),
   );
-  await page.route('https://github.com/gergol/strata/releases/download/terrain-vienna-35-4-v1/vienna-35_4-dom-2m.cog.tif', async (route) => {
+  await page.route('https://gergol.github.io/strata/data/derived/vienna-35_4-dom-2m.cog.tif', async (route) => {
     const body = await syntheticTerrainCog();
     const range = route.request().headers()['range'];
     const match = range?.match(/^bytes=(\d+)-(\d*)$/);

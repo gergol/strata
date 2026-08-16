@@ -5,7 +5,7 @@ id: vienna_surface_viewshed
 name: Surface viewshed (central Vienna)
 domain: terrain
 adapter: cog
-endpoint: https://github.com/gergol/strata/releases/download/terrain-vienna-35-4-v1/vienna-35_4-dom-2m.cog.tif
+endpoint: https://gergol.github.io/strata/data/derived/vienna-35_4-dom-2m.cog.tif
 crs: EPSG:31256
 modes: [point]
 zoom_valid: [13, 22]
@@ -38,4 +38,4 @@ feature_style:
   opacity: 0.42
   outline_color: "#b7efad"
 params:
-  materialization_kind: release_asset
+  materialization_kind: static_cog

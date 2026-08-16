@@ -24,8 +24,9 @@ The first raster recipe is `derive/vienna-surface-cog.sh`. It verifies the
 official Vienna DOM archive hash, average-resamples tile 35_4 from 0.5 m to a
 browser-sized 2 m surface model, writes a tiled/overviewed ZSTD COG, requires a
 bit-identical output hash, and validates the COG structure. The
-`publish-terrain` workflow uploads the COG and committed provenance sidecar to
-the immutable release named in that sidecar without replacing assets.
+bounded 7.3 MB COG is committed below the client data tree for same-origin
+Pages range reads. The `verify-terrain` workflow independently rebuilds it and
+requires a byte-for-byte match with the committed artifact and provenance hash.
 
 Run the real integration smoke test from the repository root:
 

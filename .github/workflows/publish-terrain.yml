@@ -1,39 +1,24 @@
-name: publish-terrain
+name: verify-terrain
 on:
   workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "Existing immutable GitHub Release tag"
-        required: true
-        default: terrain-vienna-35-4-v1
-        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: terrain-publication
 
 jobs:
-  build-and-publish:
+  rebuild-and-compare:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - name: Build and validate deterministic COG
-        run: bash derive/vienna-surface-cog.sh
-      - name: Require matching provenance contract
+        run: bash derive/vienna-surface-cog.sh /tmp/vienna-35_4-dom-2m.cog.tif
+      - name: Require bit-identical committed Pages artifact and provenance
         run: |
-          actual="$(sha256sum data/derived/vienna-35_4-dom-2m.cog.tif | cut -d' ' -f1)"
+          actual="$(sha256sum /tmp/vienna-35_4-dom-2m.cog.tif | cut -d' ' -f1)"
           expected="$(jq -r .output.sha256 data/provenance/vienna-35_4-dom-2m.cog.json)"
           test "$actual" = "$expected"
-          test "${{ inputs.release_tag }}" = "$(jq -r .output.release_tag data/provenance/vienna-35_4-dom-2m.cog.json)"
-      - name: Upload immutable assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-        run: |
-          gh release view "$RELEASE_TAG" >/dev/null
-          gh release upload "$RELEASE_TAG" \
-            data/derived/vienna-35_4-dom-2m.cog.tif \
-            data/provenance/vienna-35_4-dom-2m.cog.json
+          cmp /tmp/vienna-35_4-dom-2m.cog.tif packages/client/public/data/derived/vienna-35_4-dom-2m.cog.tif

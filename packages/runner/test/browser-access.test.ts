@@ -131,6 +131,23 @@ describe('browser access verification', () => {
     expect(result).toEqual({ ok: true });
   });
 
+  it('accepts a same-origin range-readable static COG materialization', async () => {
+    const layer = parseDescriptor({
+      ...JSON.parse(JSON.stringify(base)),
+      id: 'static_cog',
+      adapter: 'cog',
+      endpoint: 'https://gergol.github.io/strata/data/derived/terrain.cog.tif',
+      value_type: 'numeric',
+      unit: 'm',
+      scale_factor: 1,
+      coverage: 'global',
+      browser_access: 'materialized',
+      params: { materialization_kind: 'static_cog' },
+    });
+    const result = await checkBrowserAccess(layer, [], async () => new Response('x', { status: 206 }));
+    expect(result).toEqual({ ok: true });
+  });
+
   it('expands and verifies the actual browser overlay tile URL', async () => {
     const overlayLayer = parseDescriptor({
       ...JSON.parse(JSON.stringify(base)),

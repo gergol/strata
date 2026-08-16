@@ -88,7 +88,7 @@ If direct access fails, use the mitigation ladder in order:
 
 Materialized region layers declare a source endpoint, region list, source-age limit, and deployed-artifact age limit in `params`. The materializer publishes a versioned envelope atomically, and the UI shows the upstream timestamp. A failed refresh preserves the previous Pages deployment; health turns red when the deployed envelope exceeds its freshness limit.
 
-Large immutable COGs use `browser_access: materialized` with `params.materialization_kind: release_asset` and an exact GitHub Release download URL. The browser verifier still requires HTTP 206 and production-origin CORS before accepting the asset; the committed provenance sidecar pins its source and output hashes.
+Bounded committed COGs use `browser_access: materialized` with `params.materialization_kind: static_cog` and an exact same-origin Pages URL. The browser verifier still requires HTTP 206 before accepting the asset; the committed provenance sidecar pins its source and output hashes. A GitHub Release download is not a browser path merely because it supports ranges: its final asset host must also prove production-origin CORS.
 
 ## 5. Verify semantics and failure states
 

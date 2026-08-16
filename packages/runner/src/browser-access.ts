@@ -117,6 +117,12 @@ export async function checkBrowserAccess(
   }
 
   if (layer.browser_access === 'materialized') {
+    if (layer.params?.['materialization_kind'] === 'static_cog') {
+      if (new URL(layer.endpoint).origin !== APP_ORIGIN) {
+        return result(false, `static COG materialization must be same-origin with ${APP_ORIGIN}`);
+      }
+      return result(true);
+    }
     if (layer.params?.['materialization_kind'] === 'release_asset') {
       const url = new URL(layer.endpoint);
       if (url.hostname !== 'github.com' || !url.pathname.includes('/releases/download/')) {
