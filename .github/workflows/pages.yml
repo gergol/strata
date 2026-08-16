@@ -75,4 +75,14 @@ jobs:
       - run: npm ci
       - name: Wait for the materialized asset
         run: curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 3 https://gergol.github.io/strata/data/grid_generation_mix-at.json --output /dev/null
-      - run: npx tsx packages/runner/src/verify.ts verify layers/*.yaml
+      - name: Verify live layers with bounded transient retries
+        run: |
+          for attempt in 1 2 3; do
+            if npx tsx packages/runner/src/verify.ts verify layers/*.yaml; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 5))
+            fi
+          done
+          exit 1
