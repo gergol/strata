@@ -11,6 +11,19 @@ import type { Mode, Domain, AggregationId } from './descriptor.js';
 import type { LayerResult, Attribution } from './envelope.js';
 import type { LonLat, Tile } from './tile.js';
 
+export interface RasterOverlaySummary {
+  kind: 'raster';
+  tiles: string[];
+  tileSize: number;
+  minZoom: number;
+  maxZoom: number;
+  opacity: number;
+  legend?: {
+    title: string;
+    items: Array<{ label: string; color: string }>;
+  };
+}
+
 /** Descriptor-derived, UI-facing layer metadata; never the raw descriptor. */
 export interface LayerSummary {
   id: string;
@@ -22,6 +35,8 @@ export interface LayerSummary {
   unit?: string;
   attribution: Attribution;
   provenance: string;
+  /** Descriptor-driven M3 rendering metadata; absent for query-only layers. */
+  overlay?: RasterOverlaySummary;
   /** R8.3: surfaced whenever the layer's health assertion is failing. */
   degraded: boolean;
 }

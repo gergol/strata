@@ -23,6 +23,8 @@ Pick the adapter by the provider’s native access shape:
 
 Declare every supported interaction in `modes`. Tile mode must state one honest primary aggregation. A point search that reaches beyond the coordinate uses `basis: nearest`; a probe grid uses `basis: sampled`; neither may be presented as a true area statistic.
 
+Overlay mode is a rendering contract independent of the analytical adapter. A raster overlay declares one or more XYZ/WMTS/WMS tile templates, tile size, zoom bounds, default opacity, and an optional structured legend. The client understands `{z}`, `{x}`, `{y}`, and MapLibre's `{bbox-epsg-3857}` token. Keep visual and analytical semantics separate: a rendered WMS PNG can be an overlay for a COG-backed layer, but it cannot replace numeric point values or tile statistics.
+
 ## 3. Author the descriptor
 
 Copy the closest existing descriptor in `layers/` and change every field deliberately. The schema is strict: unknown fields and misspellings fail loading.
@@ -47,6 +49,8 @@ For `browser_access: direct`, test from the production origin `https://gergol.gi
 - COG assets honor a single-byte `Range` request with HTTP 206 and browser-readable CORS headers;
 - redirects retain compatible CORS behavior at the final URL;
 - browser-forbidden headers such as `User-Agent` are not required by the provider.
+
+For raster overlays, the health runner expands the tile template at the descriptor's health coordinate and verifies that the real response is an image with production-origin CORS. A successful GetCapabilities request is not sufficient evidence that GetTile/GetMap works in the browser.
 
 If direct access fails, use the mitigation ladder in order:
 

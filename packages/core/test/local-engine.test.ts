@@ -211,7 +211,18 @@ describe('registration (R6.2)', () => {
   });
 
   it('exposes layer summaries with the degraded flag', async () => {
-    const w = makeWorld();
+    const w = makeWorld({
+      modes: ['point', 'tile', 'overlay'],
+      overlay: {
+        kind: 'raster',
+        tiles: ['https://tiles.test/{z}/{x}/{y}.png'],
+        tile_size: 256,
+        min_zoom: 3,
+        max_zoom: 14,
+        opacity: 0.6,
+        legend: { title: 'pH', items: [{ label: 'neutral', color: '#009e73' }] },
+      },
+    });
     w.engine.setDegraded('test_ph', true);
     const layers = await w.engine.layers();
     expect(layers).toHaveLength(1);
@@ -221,6 +232,14 @@ describe('registration (R6.2)', () => {
       unit: 'pH',
       primaryAggregation: 'mean',
       attribution: { text: 'Test Provider', url: 'https://provider.test' },
+      overlay: {
+        kind: 'raster',
+        tiles: ['https://tiles.test/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        minZoom: 3,
+        maxZoom: 14,
+        opacity: 0.6,
+      },
     });
   });
 });

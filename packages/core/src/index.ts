@@ -17,6 +17,7 @@ export type {
   AggregationId,
   ValueType,
   LayerDescriptor,
+  RasterOverlaySpec,
 } from './descriptor.js';
 
 export { CRS_REGISTRY, isKnownCrs, knownCrsCodes } from './crs.js';
@@ -58,7 +59,7 @@ export type {
 } from './envelope.js';
 
 export type { CacheEntry, KVCache, IO } from './io.js';
-export type { LayerSummary, QueryEngine } from './engine.js';
+export type { LayerSummary, QueryEngine, RasterOverlaySummary } from './engine.js';
 
 export type { Adapter, AdapterOutcome } from './adapter.js';
 export { RateLimiter, CircuitOpenError } from './limiter.js';

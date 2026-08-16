@@ -9,7 +9,7 @@ domain: subsurface
 adapter: cog
 endpoint: https://files.isric.org/soilgrids/latest/data_aggregated/5000m/phh2o/phh2o_0-5cm_mean_5000.tif
 crs: EPSG:152160
-modes: [point, tile]
+modes: [point, tile, overlay]
 zoom_valid: [6, 14]
 value_type: numeric
 aggregation:
@@ -27,6 +27,23 @@ licence: CC-BY-4.0
 commercial_use: true
 attribution: "ISRIC — World Soil Information, SoilGrids"
 attribution_url: https://soilgrids.org
+overlay:
+  kind: raster
+  tiles:
+    - "https://maps.isric.org/mapserv?map=/map/phh2o.map&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=phh2o_0-5cm_mean&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE&SRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}"
+  tile_size: 256
+  min_zoom: 2
+  max_zoom: 14
+  opacity: 0.65
+  legend:
+    title: pH in water
+    items:
+      - { label: "3.5 — strongly acidic", color: "#f4f51e" }
+      - { label: "5.0 — acidic", color: "#d8ef2a" }
+      - { label: "6.0 — slightly acidic", color: "#73ce45" }
+      - { label: "7.0 — neutral", color: "#25a83d" }
+      - { label: "8.0 — alkaline", color: "#2ab8a6" }
+      - { label: "9.2 — strongly alkaline", color: "#16c5d4" }
 # Note: central Vienna is nodata at 5 km (urban mask) — a soil layer's canary
 # must stand on soil. Marchfeld farmland NE of Vienna:
 health_assertion:

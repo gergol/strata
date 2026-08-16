@@ -105,6 +105,40 @@ const aggregationDeclSchema = z
   })
   .strict();
 
+const overlayLegendItemSchema = z
+  .object({
+    label: z.string().min(1),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'color must be a six-digit hex value'),
+  })
+  .strict();
+
+const rasterOverlaySchema = z
+  .object({
+    kind: z.literal('raster'),
+    tiles: z.array(z.string().url()).nonempty(),
+    tile_size: z.number().int().min(128).max(512).default(256),
+    min_zoom: z.number().int().min(0).max(22),
+    max_zoom: z.number().int().min(0).max(22),
+    opacity: z.number().min(0).max(1).default(0.65),
+    legend: z
+      .object({
+        title: z.string().min(1),
+        items: z.array(overlayLegendItemSchema).nonempty(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .superRefine((overlay, ctx) => {
+    if (overlay.min_zoom > overlay.max_zoom) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['min_zoom'],
+        message: `overlay min_zoom must not exceed max_zoom (${overlay.min_zoom} > ${overlay.max_zoom})`,
+      });
+    }
+  });
+
 export const layerDescriptorSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9][a-z0-9_]*$/, 'id must be lowercase snake_case'),
@@ -140,6 +174,8 @@ export const layerDescriptorSchema = z
     location_precision: z.enum(['exact', 'fuzzed', 'centroid']).optional(),
     /** R4.4: whether a sparse point layer may search beyond the queried geometry. */
     search_beyond_tile: z.boolean().default(false),
+    /** M3 rendering contract. Kept independent of the analytical adapter. */
+    overlay: rasterOverlaySchema.optional(),
     /** Adapter-specific configuration (e.g. an Overpass QL template). Validated by the adapter. */
     params: z.record(z.unknown()).optional(),
   })
@@ -204,9 +240,24 @@ export const layerDescriptorSchema = z
         message: 'heritage-domain layers must declare location_precision (decision D5)',
       });
     }
+    if (d.modes.includes('overlay') && d.overlay === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['overlay'],
+        message: 'layers supporting overlay mode must declare an overlay rendering contract',
+      });
+    }
+    if (!d.modes.includes('overlay') && d.overlay !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['modes'],
+        message: 'a declared overlay rendering contract requires overlay mode',
+      });
+    }
   });
 
 export type LayerDescriptor = z.infer<typeof layerDescriptorSchema>;
+export type RasterOverlaySpec = z.infer<typeof rasterOverlaySchema>;
 
 export class DescriptorValidationError extends Error {
   readonly issues: string[];

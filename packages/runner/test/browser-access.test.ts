@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseDescriptor } from '@strata/core';
-import { APP_ORIGIN, checkBrowserAccess, type FetchObservation } from '../src/browser-access.js';
+import { APP_ORIGIN, checkBrowserAccess, overlayProbeUrl, type FetchObservation } from '../src/browser-access.js';
 
 const base = parseDescriptor({
   id: 'test_layer',
@@ -84,5 +84,60 @@ describe('browser access verification', () => {
       () => now,
     );
     expect(checked).toEqual({ ok: true });
+  });
+
+  it('expands and verifies the actual browser overlay tile URL', async () => {
+    const overlayLayer = parseDescriptor({
+      ...JSON.parse(JSON.stringify(base)),
+      modes: ['point', 'overlay'],
+      browser_access: 'direct',
+      overlay: {
+        kind: 'raster',
+        tiles: ['https://tiles.test/wms?z={z}&x={x}&y={y}&bbox={bbox-epsg-3857}'],
+        min_zoom: 2,
+        max_zoom: 14,
+      },
+    });
+    const expectedUrl = overlayProbeUrl(overlayLayer);
+    expect(expectedUrl).not.toContain('{');
+    const requested: string[] = [];
+    const checked = await checkBrowserAccess(
+      overlayLayer,
+      [],
+      (async (input) => {
+        requested.push(String(input));
+        return new Response(new Uint8Array([137, 80, 78, 71]), {
+          status: 200,
+          headers: { 'Content-Type': 'image/png', 'Access-Control-Allow-Origin': '*' },
+        });
+      }) as typeof fetch,
+      () => now,
+    );
+    expect(requested).toEqual([expectedUrl]);
+    expect(checked).toEqual({ ok: true });
+  });
+
+  it('fails an overlay whose rendered tiles deny the Pages origin', async () => {
+    const overlayLayer = parseDescriptor({
+      ...JSON.parse(JSON.stringify(base)),
+      modes: ['point', 'overlay'],
+      browser_access: 'direct',
+      overlay: {
+        kind: 'raster',
+        tiles: ['https://tiles.test/{z}/{x}/{y}.png'],
+        min_zoom: 2,
+        max_zoom: 14,
+      },
+    });
+    const checked = await checkBrowserAccess(
+      overlayLayer,
+      [],
+      (async () => new Response(new Uint8Array([137, 80, 78, 71]), {
+        status: 200,
+        headers: { 'Content-Type': 'image/png' },
+      })) as typeof fetch,
+      () => now,
+    );
+    expect(checked.note).toContain('overlay tile browser probe failed');
   });
 });

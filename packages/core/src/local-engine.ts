@@ -85,6 +85,24 @@ export class LocalQueryEngine implements QueryEngine {
       };
       if (d.aggregation) summary.primaryAggregation = d.aggregation.primary;
       if (d.unit !== undefined) summary.unit = d.unit;
+      if (d.overlay) {
+        summary.overlay = {
+          kind: d.overlay.kind,
+          tiles: [...d.overlay.tiles],
+          tileSize: d.overlay.tile_size,
+          minZoom: d.overlay.min_zoom,
+          maxZoom: d.overlay.max_zoom,
+          opacity: d.overlay.opacity,
+          ...(d.overlay.legend
+            ? {
+                legend: {
+                  title: d.overlay.legend.title,
+                  items: d.overlay.legend.items.map((item) => ({ ...item })),
+                },
+              }
+            : {}),
+        };
+      }
       return summary;
     });
   }

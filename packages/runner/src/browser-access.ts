@@ -1,4 +1,4 @@
-import type { LayerDescriptor } from '@strata/core';
+import { lonLatToTile, type LayerDescriptor, type Tile } from '@strata/core';
 
 export const APP_ORIGIN = 'https://gergol.github.io';
 
@@ -34,6 +34,31 @@ function firstMaterializedRegion(layer: LayerDescriptor): string {
   return regions[0];
 }
 
+const WEB_MERCATOR_HALF_WORLD = 20_037_508.342789244;
+
+function tileMercatorBBox(tile: Tile): string {
+  const matrixSize = 2 ** tile.z;
+  const tileSpan = (2 * WEB_MERCATOR_HALF_WORLD) / matrixSize;
+  return [
+    -WEB_MERCATOR_HALF_WORLD + tile.x * tileSpan,
+    WEB_MERCATOR_HALF_WORLD - (tile.y + 1) * tileSpan,
+    -WEB_MERCATOR_HALF_WORLD + (tile.x + 1) * tileSpan,
+    WEB_MERCATOR_HALF_WORLD - tile.y * tileSpan,
+  ].join(',');
+}
+
+export function overlayProbeUrl(layer: LayerDescriptor): string {
+  const overlay = layer.overlay;
+  if (!overlay) throw new Error(`layer '${layer.id}' has no overlay rendering contract`);
+  const zoom = Math.min(overlay.max_zoom, Math.max(overlay.min_zoom, 12));
+  const tile = lonLatToTile(layer.health_assertion.at, zoom);
+  return overlay.tiles[0]
+    .replaceAll('{z}', String(tile.z))
+    .replaceAll('{x}', String(tile.x))
+    .replaceAll('{y}', String(tile.y))
+    .replaceAll('{bbox-epsg-3857}', tileMercatorBBox(tile));
+}
+
 export async function checkBrowserAccess(
   layer: LayerDescriptor,
   observations: FetchObservation[],
@@ -63,6 +88,27 @@ export async function checkBrowserAccess(
     await response.body?.cancel();
     if (response.status !== 206 || !corsAllows(observation)) {
       return result(false, `browser range/CORS probe failed (${response.status}, access-control-allow-origin=${observation.accessControlAllowOrigin ?? 'missing'})`);
+    }
+  }
+
+  if (layer.overlay) {
+    const url = overlayProbeUrl(layer);
+    const response = await fetchImpl(url, {
+      headers: { Origin: APP_ORIGIN },
+      signal: AbortSignal.timeout(30_000),
+    });
+    const observation: FetchObservation = {
+      url,
+      status: response.status,
+      accessControlAllowOrigin: response.headers.get('access-control-allow-origin'),
+    };
+    const contentType = response.headers.get('content-type') ?? '';
+    await response.body?.cancel();
+    if (!response.ok || !contentType.startsWith('image/') || !corsAllows(observation)) {
+      return result(
+        false,
+        `overlay tile browser probe failed (${response.status}, content-type=${contentType || 'missing'}, access-control-allow-origin=${observation.accessControlAllowOrigin ?? 'missing'})`,
+      );
     }
   }
 

@@ -1,7 +1,8 @@
 # Strata — Requirements & Planning Document
-**Status:** draft v0.2.1
-**Date:** 2026-08-08
+**Status:** draft v0.3
+**Date:** 2026-08-16
 **Errata v0.2.1 (2026-08-08 audit):** six adapters, not five (§3); GIBS adapter code corrected to A6 (§10.2); §9 derivations are referenced as "§9, derivation *n*" (there are no §9 subsections); §6 example aligned with descriptor schema v1 — see plan §5 for the recorded deviations.
+**Changed in v0.3:** overlay mode now has an explicit descriptor rendering contract, matching the first Phase 1 raster-overlay implementation.
 **Name:** **Strata** — chosen over the working title "Anything-Map". The name refers to the layered structure of what the app exposes about a place, and deliberately avoids promising completeness, since coverage will be permanently uneven (see §10). "Strata" is plural; the singular "Stratum" is available if a singular reads better in UI copy.
 **Author's context:** a new OSM-based general-purpose geospatial data explorer, built from scratch. A prior flight-radar prototype exists but is treated here as a source of learning only — no code, feed, or ingestion is assumed to carry over. Aircraft are one layer among many, competing for priority on the same terms as everything else.
 ---
@@ -108,13 +109,27 @@ licence: CC-BY-4.0
 commercial_use: true
 attribution: "ISRIC — World Soil Information"
 attribution_url: https://soilgrids.org
+overlay:
+  kind: raster
+  tiles:
+    - "https://maps.isric.org/mapserv?map=/map/phh2o.map&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=phh2o_0-5cm_mean&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE&SRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}"
+  tile_size: 256
+  min_zoom: 2
+  max_zoom: 14
+  opacity: 0.65
+  legend:
+    title: pH in water
+    items:
+      - { label: "3.5 — strongly acidic", color: "#f4f51e" }
+      - { label: "7.0 — neutral", color: "#25a83d" }
+      - { label: "9.2 — strongly alkaline", color: "#16c5d4" }
 health_assertion:
   at: [16.37, 48.21]
   expect_range: [5.0, 9.0]     # post-scaling units, same as the pipeline output
 coverage: global
 provenance_note: "250 m modelled, not measured"
 ```
-> *Schema note (v0.2.1):* the implemented descriptor schema v1 (`packages/core`) additionally defines optional `nodata` (sentinel filtered before scaling), `browser_access` (plan §5), `location_precision` (decision D5), `search_beyond_tile` (R4.4), and `params` (adapter-specific configuration). `value_type` is mandatory: it decides whether R6.3 (numeric) or R4.3 (categorical) binds.
+> *Schema note (v0.3):* the implemented descriptor schema v1 (`packages/core`) additionally defines optional `nodata` (sentinel filtered before scaling), `browser_access` (plan §5), `location_precision` (decision D5), `search_beyond_tile` (R4.4), and `params` (adapter-specific configuration). `value_type` is mandatory: it decides whether R6.3 (numeric) or R4.3 (categorical) binds. A layer declaring `overlay` mode also declares a validated rendering contract (tile templates, zoom bounds, opacity, and optional legend) independent of its analytical adapter.
 ### 6.1 Requirements
 - R6.1 No layer-specific logic outside its adapter. If a layer needs bespoke code, the adapter is under-specified.
 - R6.2 `licence`, `commercial_use`, `attribution` are mandatory fields, validated at load. A layer without them fails to register.

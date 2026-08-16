@@ -5,6 +5,7 @@
   import type { LayerResult, LayerSummary, LonLat } from '@strata/core';
   import { WorkerQueryEngine } from './worker-engine';
   import LayerPanel from './LayerPanel.svelte';
+  import OverlayControl from './OverlayControl.svelte';
   import ApiKeySettings from './ApiKeySettings.svelte';
 
   const build = __BUILD_INFO__;
@@ -20,6 +21,10 @@
   let mapError = $state<string | null>(null);
   let mappedLayers = $state<Record<string, { name: string; count: number; color: string }>>({});
   let map: maplibregl.Map | undefined;
+  const activeRasterOverlays = new Map<string, { layer: LayerSummary; opacity: number }>();
+  const overlayLayers = $derived(
+    layers.filter((layer): layer is LayerSummary & { overlay: NonNullable<LayerSummary['overlay']> } => layer.overlay !== undefined),
+  );
 
   const overlayData = new Map<string, { layer: LayerSummary; features: GeoJSON.Feature<GeoJSON.Point>[] }>();
   const DOMAIN_COLORS: Partial<Record<LayerSummary['domain'], string>> = {
@@ -28,7 +33,7 @@
     subsurface: '#9b7ede',
   };
 
-  function overlayIds(layerId: string): { source: string; circles: string } {
+  function featureOverlayIds(layerId: string): { source: string; circles: string } {
     return {
       source: `strata-features-${layerId}`,
       circles: `strata-features-${layerId}-circles`,
@@ -52,7 +57,7 @@
     const currentMap = map;
     const overlay = overlayData.get(layerId);
     if (!currentMap || !overlay || !currentMap.isStyleLoaded()) return;
-    const ids = overlayIds(layerId);
+    const ids = featureOverlayIds(layerId);
     const data: GeoJSON.FeatureCollection<GeoJSON.Point> = {
       type: 'FeatureCollection',
       features: overlay.features,
@@ -107,6 +112,59 @@
     mappedLayers = {};
   }
 
+  function rasterOverlayIds(layerId: string): { source: string; raster: string } {
+    return {
+      source: `strata-raster-${layerId}`,
+      raster: `strata-raster-${layerId}-layer`,
+    };
+  }
+
+  function syncRasterOverlay(layerId: string): void {
+    const currentMap = map;
+    if (!currentMap || !currentMap.isStyleLoaded()) return;
+    const ids = rasterOverlayIds(layerId);
+    const active = activeRasterOverlays.get(layerId);
+    if (!active?.layer.overlay) {
+      if (currentMap.getLayer(ids.raster)) currentMap.removeLayer(ids.raster);
+      if (currentMap.getSource(ids.source)) currentMap.removeSource(ids.source);
+      return;
+    }
+    const spec = active.layer.overlay;
+    if (!currentMap.getSource(ids.source)) {
+      currentMap.addSource(ids.source, {
+        type: 'raster',
+        tiles: spec.tiles,
+        tileSize: spec.tileSize,
+        minzoom: spec.minZoom,
+        maxzoom: spec.maxZoom,
+        attribution: active.layer.attribution.text,
+      });
+    }
+    if (!currentMap.getLayer(ids.raster)) {
+      const before = currentMap.getStyle().layers?.find((styleLayer) => styleLayer.type === 'symbol')?.id;
+      currentMap.addLayer(
+        {
+          id: ids.raster,
+          type: 'raster',
+          source: ids.source,
+          minzoom: spec.minZoom,
+          maxzoom: spec.maxZoom + 1,
+          paint: { 'raster-opacity': active.opacity },
+        },
+        before,
+      );
+    } else {
+      currentMap.setPaintProperty(ids.raster, 'raster-opacity', active.opacity);
+    }
+  }
+
+  function setRasterOverlay(layer: LayerSummary, enabled: boolean, opacity: number): void {
+    if (!layer.overlay) return;
+    if (enabled) activeRasterOverlays.set(layer.id, { layer, opacity });
+    else activeRasterOverlays.delete(layer.id);
+    syncRasterOverlay(layer.id);
+  }
+
   onMount(() => {
     const mountedMap = new maplibregl.Map({
       container: mapContainer,
@@ -117,7 +175,7 @@
     });
     map = mountedMap;
     mountedMap.addControl(new maplibregl.NavigationControl({ showCompass: false }));
-    // A silently gray basemap violates our own R5.2 — say what failed.
+    // A silently gray map violates our own R5.2 — say what failed.
     mountedMap.on('error', (e) => {
       const msg = e.error?.message ?? 'unknown map error';
       console.error('map error:', e.error);
@@ -126,6 +184,7 @@
     mountedMap.on('load', () => {
       mapError = null;
       for (const layerId of overlayData.keys()) syncFeatureOverlay(layerId);
+      for (const layerId of activeRasterOverlays.keys()) syncRasterOverlay(layerId);
     });
     let marker: maplibregl.Marker | undefined;
     mountedMap.on('click', (e) => {
@@ -149,7 +208,7 @@
 <div class="app">
   <div class="map" bind:this={mapContainer}>
     {#if mapError}
-      <div class="map-error" role="alert">basemap failed to load: {mapError}</div>
+      <div class="map-error" role="alert">map layer failed to load: {mapError}</div>
     {/if}
     {#if Object.keys(mappedLayers).length > 0}
       <div class="map-feature-summary" role="status" aria-live="polite">
@@ -171,6 +230,17 @@
         aria-controls="settings-panel"
       >⚙</button>
     </header>
+
+    {#if overlayLayers.length > 0}
+      <section class="overlay-section" aria-label="Map overlays">
+        <h2>Map overlays</h2>
+        <div class="overlay-stack">
+          {#each overlayLayers as layer (layer.id)}
+            <OverlayControl {layer} onChange={setRasterOverlay} />
+          {/each}
+        </div>
+      </section>
+    {/if}
 
     {#if target}
       <div class="coords">{target[1].toFixed(5)}, {target[0].toFixed(5)} · z{zoom}</div>
@@ -319,6 +389,13 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+  .overlay-section h2 {
+    margin-top: 0;
+  }
+  .overlay-stack {
+    display: grid;
+    gap: 0.4rem;
   }
   .hint {
     color: #9aa3ad;

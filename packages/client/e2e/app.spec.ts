@@ -18,6 +18,10 @@ const overpassFixture = {
     },
   ],
 };
+const transparentPng = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
 
 async function mockExternalData(page: Page): Promise<void> {
   await page.route('https://tiles.openfreemap.org/styles/liberty', (route) =>
@@ -44,6 +48,9 @@ async function mockExternalData(page: Page): Promise<void> {
   );
   await page.route('https://overpass-api.de/api/interpreter', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(overpassFixture), headers: corsHeaders }),
+  );
+  await page.route('https://maps.isric.org/mapserv?**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: transparentPng, headers: corsHeaders }),
   );
 }
 
@@ -76,6 +83,28 @@ test('queries the materialized energy and Overpass layers through the real worke
   await expect(page.locator('.map-feature-summary')).toHaveText('1 map point · Drinking water points');
   await waterPanel.getByRole('button', { name: /area stats/ }).click();
   await expect(waterPanel.getByText('count', { exact: true })).toBeVisible();
+});
+
+test('renders a descriptor-driven raster overlay with opacity and legend controls', async ({ page }) => {
+  await page.goto('/');
+  const controls = page.getByRole('region', { name: 'Map overlays' });
+  const toggle = controls.getByRole('checkbox', { name: 'Soil pH (0–5 cm)' });
+  const tileRequest = page.waitForRequest((request) =>
+    request.url().startsWith('https://maps.isric.org/mapserv?') && request.url().includes('REQUEST=GetMap'),
+  );
+
+  await toggle.check();
+  const request = await tileRequest;
+  expect(request.url()).toContain('BBOX=');
+  expect(request.url()).not.toContain('{bbox-epsg-3857}');
+  await expect(controls.getByLabel('Soil pH (0–5 cm) legend')).toBeVisible();
+  await expect(controls.getByText('7.0 — neutral')).toBeVisible();
+
+  const opacity = controls.getByLabel('Soil pH (0–5 cm) opacity');
+  await opacity.fill('0.35');
+  await expect(controls.getByText('35%')).toBeVisible();
+  await toggle.uncheck();
+  await expect(opacity).toHaveCount(0);
 });
 
 test('stores and removes BYOK values without rendering the stored value', async ({ page }) => {

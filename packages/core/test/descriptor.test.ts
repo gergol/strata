@@ -107,10 +107,45 @@ describe('descriptor validation (R6.2, R6.3, R8.4)', () => {
     failsMentioning(rest, 'primary aggregation');
   });
 
-  it('allows point/overlay-only layers to omit aggregation', () => {
+  it('allows point-only layers to omit aggregation', () => {
     const { aggregation: _agg, ...rest } = valid;
-    const d = parseDescriptor({ ...rest, modes: ['point', 'overlay'] });
+    const d = parseDescriptor({ ...rest, modes: ['point'] });
     expect(d.aggregation).toBeUndefined();
+  });
+
+  it('validates a descriptor-driven raster overlay contract', () => {
+    const overlay = {
+      kind: 'raster',
+      tiles: ['https://tiles.test/wms?bbox={bbox-epsg-3857}'],
+      min_zoom: 3,
+      max_zoom: 14,
+      opacity: 0.6,
+      legend: {
+        title: 'pH',
+        items: [
+          { label: 'acidic', color: '#f0e442' },
+          { label: 'alkaline', color: '#009e73' },
+        ],
+      },
+    };
+    const d = parseDescriptor({ ...valid, modes: ['point', 'tile', 'overlay'], overlay });
+    expect(d.overlay).toMatchObject({ tile_size: 256, min_zoom: 3, max_zoom: 14 });
+  });
+
+  it('keeps overlay mode and rendering configuration in lockstep', () => {
+    failsMentioning({ ...valid, modes: ['point', 'tile', 'overlay'] }, 'overlay rendering contract');
+    failsMentioning(
+      {
+        ...valid,
+        overlay: {
+          kind: 'raster',
+          tiles: ['https://tiles.test/{z}/{x}/{y}.png'],
+          min_zoom: 4,
+          max_zoom: 3,
+        },
+      },
+      'min_zoom',
+    );
   });
 
   it('forces categorical tile layers to histogram or modal_with_confidence (R4.3)', () => {
