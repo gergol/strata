@@ -19,6 +19,9 @@ export const CRS_REGISTRY: Readonly<Record<string, string>> = {
   // Austria Lambert (Austrian national services, e.g. BEV, GBA, eHYD)
   'EPSG:31287':
     '+proj=lcc +lat_1=49 +lat_2=46 +lat_0=47.5 +lon_0=13.33333333333333 +x_0=400000 +y_0=400000 +ellps=bessel +towgs84=577.326,90.129,463.919,5.137,1.474,5.297,2.4232 +units=m +no_defs',
+  // MGI / Austria GK East (Vienna open-data WFS)
+  'EPSG:31256':
+    '+proj=tmerc +lat_0=0 +lon_0=16.33333333333333 +k=1 +x_0=0 +y_0=-5000000 +ellps=bessel +towgs84=577.326,90.129,463.919,5.137,1.474,5.297,2.4232 +units=m +no_defs',
   // Interrupted Goode Homolosine (SoilGrids)
   'EPSG:152160': '+proj=igh +lat_0=0 +lon_0=0 +datum=WGS84 +units=m +no_defs',
 };

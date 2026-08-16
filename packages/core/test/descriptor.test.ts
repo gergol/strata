@@ -83,6 +83,22 @@ describe('descriptor validation (R6.2, R6.3, R8.4)', () => {
       { ...bbox, params: { ...bbox.params, sparql_query: '{{spatial}} SERVICE <https://example.test> { ?item ?p ?o }' } },
       'nested queries, services, and update operations',
     );
+
+    const wfs = {
+      ...bbox,
+      params: {
+        protocol: 'wfs',
+        wfs_version: '2.0.0',
+        wfs_type_name: 'protected:site',
+        wfs_srs_name: 'urn:ogc:def:crs:EPSG::4326',
+        wfs_axis_order: 'yx',
+        wfs_label_fields: ['name'],
+      },
+    };
+    expect(parseDescriptor(wfs).params?.['protocol']).toBe('wfs');
+    failsMentioning({ ...wfs, params: { ...wfs.params, wfs_type_name: 'bad type name' } }, 'wfs_type_name');
+    failsMentioning({ ...wfs, params: { ...wfs.params, wfs_version: '1.0.0' } }, 'wfs_version');
+    failsMentioning({ ...wfs, params: { ...wfs.params, wfs_axis_order: undefined } }, 'wfs_axis_order');
   });
 
   it('rejects a descriptor missing licence, naming the field (R6.2)', () => {

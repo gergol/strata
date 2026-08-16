@@ -73,6 +73,7 @@ export { CogAdapter } from './adapters/cog.js';
 export type { CogAdapterDeps } from './adapters/cog.js';
 export { OverpassAdapter } from './adapters/overpass.js';
 export { SparqlAdapter } from './adapters/sparql.js';
+export { WfsAdapter } from './adapters/wfs.js';
 export { BBoxVectorAdapter } from './adapters/bbox-vector.js';
 export { RegionAdapter, parseEnergyChartsPublicPower } from './adapters/region.js';
 export { findContainingFeature, pointInFeature } from './geometry.js';

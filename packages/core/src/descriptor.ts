@@ -281,12 +281,56 @@ export const layerDescriptorSchema = z
     }
     if (d.adapter === 'bbox_vector') {
       const protocol = d.params?.['protocol'];
-      if (protocol !== 'overpass' && protocol !== 'sparql') {
+      if (protocol !== 'overpass' && protocol !== 'sparql' && protocol !== 'wfs') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['params', 'protocol'],
-          message: "bbox_vector layers must declare params.protocol as 'overpass' or 'sparql'",
+          message: "bbox_vector layers must declare params.protocol as 'overpass', 'sparql', or 'wfs'",
         });
+      }
+      if (protocol === 'wfs') {
+        const typeName = d.params?.['wfs_type_name'];
+        if (typeof typeName !== 'string' || !/^[A-Za-z_][\w.-]*(?::[A-Za-z_][\w.-]*)?$/.test(typeName)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', 'wfs_type_name'],
+            message: 'wfs_type_name must be a feature type name or namespace-qualified name',
+          });
+        }
+        if (d.params?.['wfs_version'] !== '1.1.0' && d.params?.['wfs_version'] !== '2.0.0') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', 'wfs_version'],
+            message: "wfs_version must be pinned as '1.1.0' or '2.0.0'",
+          });
+        }
+        if (typeof d.params?.['wfs_srs_name'] !== 'string' || d.params['wfs_srs_name'].length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', 'wfs_srs_name'],
+            message: 'wfs_srs_name must pin the exact advertised request CRS name',
+          });
+        }
+        if (d.params?.['wfs_axis_order'] !== 'xy' && d.params?.['wfs_axis_order'] !== 'yx') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', 'wfs_axis_order'],
+            message: "wfs_axis_order must be pinned as 'xy' or 'yx'",
+          });
+        }
+        const labelFields = d.params?.['wfs_label_fields'];
+        if (labelFields !== undefined && (
+          !Array.isArray(labelFields) ||
+          labelFields.length === 0 ||
+          !labelFields.every((field) => typeof field === 'string' && field.length > 0)
+        )) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', 'wfs_label_fields'],
+            message: 'wfs_label_fields must be a non-empty array of field names',
+          });
+        }
+        return;
       }
       const key = protocol === 'sparql' ? 'sparql_query' : 'overpass_query';
       const template = d.params?.[key];
