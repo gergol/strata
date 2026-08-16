@@ -282,6 +282,10 @@ Phasing follows requirements §11; this section adds the milestone-level detail.
 
 This package deliberately stops before vector overlay styling, standalone overlay-only descriptors, GIBS time dimensions, or compare controls; those remain in M1.1/M1.8. The planned WorldCover analytical dry-run was rechecked first: the official 2021 v200 S3 COG responds to range requests but does not emit `Access-Control-Allow-Origin`, so a Pages browser cannot read it. The official Terrascope WMTS is a viable future *visual* overlay, but rendered PNG tiles cannot supply WorldCover point classes or histograms. Multi-file analytical COG support therefore remains blocked pending a browser-valid mirror, materialization strategy, or an explicit stateless-shim decision.
 
+**M1.1b — Standalone visual overlays (2026-08-16).** Overlay-only descriptors now have explicit semantics: `modes: [overlay]`, no point-result panel, and `health_assertion.expect_overlay: true`, which makes scheduled verification expand and fetch an actual rendered tile instead of calling an analytical adapter. ESA WorldCover 2021 is the first proof, using Terrascope's official browser-CORS-capable WMTS with its 11-class legend, opacity control, attribution, and desktop/mobile browser coverage.
+
+This completes the standalone raster branch of M1.1 and deliberately stops before vector overlay styling, time dimensions, and compare controls. WorldCover remains visual-only: PNG tiles do not provide analytical point classes or histograms, and its official multi-file COG distribution is still blocked for direct browser analytics by missing CORS headers.
+
 ### Phase 2 — differentiators
 *Goal: the layers nobody has made pretty. All request/response or fully local; still no standing infrastructure.*
 
