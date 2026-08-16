@@ -1,9 +1,10 @@
 # Strata — Technical Plan
-**Status:** v0.4, in effect (companion to [requirements.md](requirements.md) draft v0.3)
+**Status:** v0.5, in effect (companion to [requirements.md](requirements.md) draft v0.3)
 **Date:** 2026-08-16
 **Changed in v0.2:** architecture revised from thin-server-proxy to client-only after re-examination (see §1 and decisions.md D1); Phases 1–4 detailed (§8); requirements deviations forced by client-only recorded (§5).
 **Changed in v0.3:** decisions D1–D9 accepted by the author; D1 carries a rider — keep a later proxy switch contained — implemented as §4.5.
 **Changed in v0.4:** Phase 0 hardening records browser-aware health, the Energy-Charts materialization, PWA/BYOK/browser regression gates, and the explicit WorldCover capability gap (§6.2).
+**Changed in v0.5:** Phase 1 closure and the Phase 2 PMTiles derivation/provenance toolchain are recorded (§8).
 
 This document turns the requirements into buildable decisions: architecture shape, stack, repository layout, core contracts, and a work breakdown for all phases. Positions on the open decisions of requirements §12 live in [decisions.md](decisions.md); this plan assumes the recommendations there and must be revised if they change.
 
@@ -330,6 +331,12 @@ NASA GIBS MODIS Terra true-colour imagery is live with a selectable recent acqui
 - **M2.5 — IACS/INVEKOS crop parcels.** AT first; yearly materialized PMTiles per M2.1; CAP subsidy join where feasible.
 - **M2.6 — Historical compare.** Swipe/slider control; Franziszeische Landesaufnahme + historical aerials vs current OSM.
 - **M2.7 — Transmitter coverage prediction.** Regulator site data + terrain → precomputed coverage PMTiles. Longest shot; sequenced last, cuttable without regret.
+
+#### Phase 2 progress
+
+**M2.1 — Derivation toolchain (2026-08-16).** Strict JSON recipes now pin source release, licence, source/prepared-input digests, transformation steps, retained properties, zooms, attribution, and publication destination. The Node runner requires a PMTiles-capable Tippecanoe release, invokes it without a shell, writes through a stable temporary path, decodes the resulting PMTiles v3 archive through the reference library, and atomically replaces the previous archive only after structural checks pass. A versioned sidecar stamps recipe, source, input, artifact, toolchain, archive statistics, and publication provenance; verification rejects drift in any of those contracts.
+
+The integration smoke builds the same small archive twice and requires bit-identical SHA-256 digests before reopening it. CI installs real Tippecanoe and runs that proof on every change. The manual publication workflow routes bounded artifacts below the client data tree into git and the normal Pages deploy, while large artifacts are uploaded with their sidecars to an existing GitHub Release without replacing immutable assets. Source-specific download, validation, reprojection, and joins remain explicit preparation steps rather than hidden generic behaviour. M2.2 viewshed and sun/shadow is next.
 
 *Phase exit:* at least three layers exist that no consumer map offers (EGMS view, viewshed/shadow, crop parcels all qualify).
 
