@@ -68,7 +68,7 @@ describe('minimum interval (R7.3)', () => {
   });
 });
 
-describe('429 handling (R7.6)', () => {
+describe('transient HTTP handling (R7.6)', () => {
   it('honours Retry-After and then succeeds', async () => {
     const clock = makeClock();
     const limiter = new RateLimiter(clock);
@@ -103,6 +103,23 @@ describe('429 handling (R7.6)', () => {
     expect(res.status).toBe(429); // returned to the caller after retries exhausted
     expect(calls).toBe(3); // initial + 2 retries
     expect(clock.t()).toBeGreaterThanOrEqual(100 + 200); // 100*2^0 + 100*2^1
+  });
+
+  it('retries an intermittent gateway timeout before returning it to the adapter', async () => {
+    const clock = makeClock();
+    const limiter = new RateLimiter(clock, { maxRetries: 2, baseBackoffMs: 100 });
+    let calls = 0;
+    const flakyGateway = (async () => {
+      calls++;
+      return calls === 1 ? new Response('gateway timeout', { status: 504 }) : okResponse();
+    }) as unknown as typeof fetch;
+
+    const wrapped = limiter.wrapFetch('l', { max_concurrent: 1, min_interval_ms: 0 }, flakyGateway);
+    const res = await wrapped('https://x.test/');
+
+    expect(res.status).toBe(200);
+    expect(calls).toBe(2);
+    expect(clock.t()).toBeGreaterThanOrEqual(100);
   });
 });
 

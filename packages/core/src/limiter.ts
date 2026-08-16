@@ -1,6 +1,6 @@
 /**
  * Per-layer politeness enforcement (R7.3, R7.6): concurrency cap, minimum
- * request interval, 429/Retry-After handling with exponential backoff, and a
+ * request interval, transient HTTP/Retry-After handling with exponential backoff, and a
  * circuit breaker so a repeatedly failing layer stops being hammered instead
  * of retrying into a ban.
  *
@@ -19,7 +19,7 @@ export interface LimiterOptions {
   circuitThreshold?: number;
   /** How long an open circuit rejects before allowing a probe request. */
   circuitCooldownMs?: number;
-  /** Retries on 429/503 before giving up (per request). */
+  /** Retries on transient HTTP responses before giving up (per request). */
   maxRetries?: number;
   /** Base backoff when no Retry-After header is present; doubles per attempt. */
   baseBackoffMs?: number;
@@ -49,6 +49,8 @@ const realClock: LimiterClock = {
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 };
+
+const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
 export class RateLimiter {
   private readonly states = new Map<string, LayerState>();
@@ -110,7 +112,7 @@ export class RateLimiter {
             this.recordFailure(s);
             throw e;
           }
-          if ((response.status === 429 || response.status === 503) && attempt < this.maxRetries) {
+          if (RETRYABLE_STATUSES.has(response.status) && attempt < this.maxRetries) {
             const retryAfter = response.headers.get('Retry-After');
             const seconds = retryAfter !== null ? Number(retryAfter) : NaN;
             const delay = Number.isFinite(seconds)
