@@ -74,6 +74,7 @@ export type { CogAdapterDeps } from './adapters/cog.js';
 export { OverpassAdapter } from './adapters/overpass.js';
 export { SparqlAdapter } from './adapters/sparql.js';
 export { WfsAdapter } from './adapters/wfs.js';
+export { GbfsAdapter } from './adapters/gbfs.js';
 export { PointSampleAdapter } from './adapters/point-sample.js';
 export { PrecomputedAdapter } from './adapters/precomputed.js';
 export { BBoxVectorAdapter } from './adapters/bbox-vector.js';

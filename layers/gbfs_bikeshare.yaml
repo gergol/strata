@@ -1,0 +1,55 @@
+defaults:
+  domain: transport
+  adapter: bbox_vector
+  crs: EPSG:4326
+  modes: [point, tile]
+  zoom_valid: [10, 18]
+  value_type: feature
+  aggregation:
+    primary: count
+    secondary: [feature_list]
+  ttl: 1m
+  rate_limit:
+    group: nextbike-gbfs
+    max_concurrent: 2
+    min_interval_ms: 100
+  licence: CC0-1.0
+  commercial_use: true
+  attribution: "GBFS feed published by nextbike"
+  attribution_url: https://gbfs.org/
+  provenance_note: "Live GBFS v2.3 station information joined to current station status; point results are nearest stations within 1.5 km and tile counts are exact for the feed snapshot"
+  browser_access: direct
+  search_beyond_tile: true
+  params:
+    protocol: gbfs
+    gbfs_language: en
+    point_radius_m: 1500
+    feature_cap: 20
+
+layers:
+  - id: bikeshare_wienmobil_vienna
+    name: WienMobil Rad availability
+    endpoint: https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_wr/gbfs.json
+    coverage:
+      bbox: [16.15, 48.05, 16.65, 48.4]
+    health_assertion:
+      at: [16.372983, 48.210666]
+      expect_min_count: 1
+
+  - id: bikeshare_citybike_linz
+    name: City Bike Linz availability
+    endpoint: https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_al/gbfs.json
+    coverage:
+      bbox: [14.15, 48.2, 14.45, 48.4]
+    health_assertion:
+      at: [14.284723, 48.305517]
+      expect_min_count: 1
+
+  - id: bikeshare_nextbike_bratislava
+    name: Nextbike Bratislava availability
+    endpoint: https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_bi/gbfs.json
+    coverage:
+      bbox: [16.8, 47.9, 17.35, 48.35]
+    health_assertion:
+      at: [17.144699, 48.148543]
+      expect_min_count: 1

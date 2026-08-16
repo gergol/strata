@@ -122,6 +122,39 @@ async function mockExternalData(page: Page): Promise<void> {
       headers: corsHeaders,
     });
   });
+  await page.route('https://gbfs.nextbike.net/maps/gbfs/v2/**', (route) => {
+    const url = new URL(route.request().url());
+    const base = url.href.slice(0, url.href.indexOf('/en/') >= 0 ? url.href.indexOf('/en/') + 1 : url.href.lastIndexOf('/') + 1);
+    if (url.pathname.endsWith('/gbfs.json')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { en: { feeds: [
+          { name: 'station_information', url: `${base}en/station_information.json` },
+          { name: 'station_status', url: `${base}en/station_status.json` },
+        ] } } }),
+        headers: corsHeaders,
+      });
+    }
+    if (url.pathname.endsWith('/station_information.json')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { stations: [
+          { station_id: 'test-bike', name: 'Stephansplatz U', lon: 16.372111, lat: 48.207836, capacity: 30 },
+        ] } }),
+        headers: corsHeaders,
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { stations: [
+        { station_id: 'test-bike', num_bikes_available: 9, num_docks_available: 21, is_renting: 1, is_returning: 1, last_reported: 1786910400 },
+      ] } }),
+      headers: corsHeaders,
+    });
+  });
   await page.route('https://service.pdok.nl/**', (route) => {
     const url = new URL(route.request().url());
     const cadastral = url.pathname.includes('kadastralekaart');
@@ -161,7 +194,7 @@ test.beforeEach(async ({ page }) => {
 test('queries the materialized energy and Overpass layers through the real worker', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('37 of 37 query layers')).toBeVisible();
+  await expect(page.getByText('40 of 40 query layers')).toBeVisible();
 
   const canvas = page.locator('.maplibregl-canvas');
   await expect(canvas).toBeVisible();
@@ -292,16 +325,16 @@ test('filters the expanded query catalogue by layer name or domain', async ({ pa
   await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
 
-  await expect(page.getByText('37 of 37 query layers')).toBeVisible();
+  await expect(page.getByText('40 of 40 query layers')).toBeVisible();
   await filter.fill('transport');
-  await expect(page.getByText('3 of 37 query layers')).toBeVisible();
+  await expect(page.getByText('6 of 40 query layers')).toBeVisible();
   await expect(page.getByRole('button', { name: /Bicycle parking/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /EV charging stations/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /International airports \(Wikidata\)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Soil pH/ })).toHaveCount(0);
 
   await filter.fill('bookcase');
-  await expect(page.getByText('1 of 37 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 40 query layers')).toBeVisible();
   const bookcase = page.getByRole('button', { name: /Public bookcases/ });
   await bookcase.click();
   await expect(page.locator('section.panel').filter({ hasText: 'Public bookcases' }).locator('.value')).toContainText('1');
@@ -314,7 +347,7 @@ test('queries and maps a linked Wikidata layer through the SPARQL adapter', asyn
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('Museums (Wikidata)');
-  await expect(page.getByText('1 of 37 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 40 query layers')).toBeVisible();
 
   const museums = page.locator('section.panel').filter({ hasText: 'Museums (Wikidata)' });
   await museums.getByRole('button', { name: /Museums \(Wikidata\)/ }).click();
@@ -333,7 +366,7 @@ test('renders Open-Meteo point samples without presenting them as observations o
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('European air-quality index');
-  await expect(page.getByText('1 of 37 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 40 query layers')).toBeVisible();
 
   const panel = page.locator('section.panel').filter({ hasText: 'European air-quality index now' });
   await panel.getByRole('button', { name: /European air-quality index/ }).click();
@@ -360,12 +393,23 @@ test('joins same-origin precomputed broadband and census indexes in the worker',
   await expect(population.getByText(/official EPSG:3035 1 km census cell/)).toBeVisible();
 });
 
+test('discovers a GBFS feed and maps joined live station availability', async ({ page }) => {
+  await page.goto('/');
+  const filter = page.getByRole('searchbox', { name: 'Filter layers' });
+  await filter.fill('WienMobil Rad availability');
+  const panel = page.locator('section.panel').filter({ hasText: 'WienMobil Rad availability' });
+  await panel.getByRole('button', { name: /WienMobil Rad availability/ }).click();
+  await expect(panel.getByText('Stephansplatz U — 9 available · 21 docks')).toBeVisible();
+  await expect(panel.getByText('nearest — searched around the point')).toBeVisible();
+  await expect(page.locator('.map-feature-summary')).toHaveText('1 map point · WienMobil Rad availability');
+});
+
 test('queries a zoom-gated cadastral layer through GetCapabilities-driven WFS', async ({ page }) => {
   await page.context().setGeolocation({ latitude: 52.36, longitude: 4.885, accuracy: 10 });
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('Cadastral parcels');
-  await expect(page.getByText('1 of 37 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 40 query layers')).toBeVisible();
 
   const cadastral = page.locator('section.panel').filter({ hasText: 'Cadastral parcels (NL)' });
   await cadastral.getByRole('button', { name: /Cadastral parcels/ }).click();

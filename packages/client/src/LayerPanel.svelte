@@ -90,7 +90,10 @@
       'feature',
     );
     const identity = [p['osm_type'], p['osm_id']].filter(Boolean).map(String).join(' ');
-    const displayLabel = identity ? `${label} (${identity})` : label;
+    const availability = typeof p['vehicles_available'] === 'number'
+      ? `${p['vehicles_available']} available${typeof p['docks_available'] === 'number' ? ` · ${p['docks_available']} docks` : ''}`
+      : undefined;
+    const displayLabel = availability ? `${label} — ${availability}` : identity ? `${label} (${identity})` : label;
     const href = typeof p['wikidata_url'] === 'string' && /^https:\/\/www\.wikidata\.org\/wiki\/Q\d+$/.test(p['wikidata_url'])
       ? p['wikidata_url']
       : undefined;

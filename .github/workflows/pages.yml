@@ -98,6 +98,7 @@ jobs:
               "layers/open_meteo_samples.yaml#weather_temperature_now"
               "layers/ookla_broadband_vienna.yaml#broadband_fixed_download_vienna"
               layers/gisco_population_vienna.yaml
+              "layers/gbfs_bikeshare.yaml#bikeshare_wienmobil_vienna"
               layers/worldcover_2021.yaml
             )
           fi

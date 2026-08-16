@@ -281,11 +281,11 @@ export const layerDescriptorSchema = z
     }
     if (d.adapter === 'bbox_vector') {
       const protocol = d.params?.['protocol'];
-      if (protocol !== 'overpass' && protocol !== 'sparql' && protocol !== 'wfs') {
+      if (protocol !== 'overpass' && protocol !== 'sparql' && protocol !== 'wfs' && protocol !== 'gbfs') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['params', 'protocol'],
-          message: "bbox_vector layers must declare params.protocol as 'overpass', 'sparql', or 'wfs'",
+          message: "bbox_vector layers must declare params.protocol as 'overpass', 'sparql', 'wfs', or 'gbfs'",
         });
       }
       if (protocol === 'wfs') {
@@ -328,6 +328,26 @@ export const layerDescriptorSchema = z
             code: z.ZodIssueCode.custom,
             path: ['params', 'wfs_label_fields'],
             message: 'wfs_label_fields must be a non-empty array of field names',
+          });
+        }
+        return;
+      }
+      if (protocol === 'gbfs') {
+        if (d.value_type !== 'feature') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['value_type'],
+            message: 'GBFS layers return station features',
+          });
+        }
+        const radius = d.params?.['point_radius_m'];
+        if (radius !== undefined && (
+          typeof radius !== 'number' || !Number.isFinite(radius) || radius <= 0 || radius > 20_000
+        )) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['params', 'point_radius_m'],
+            message: 'GBFS point_radius_m must be in (0, 20000]',
           });
         }
         return;
