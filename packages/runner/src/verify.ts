@@ -150,7 +150,9 @@ async function verify(files: string[]): Promise<number> {
           limiter,
         });
         const result = supportsPointHealth(descriptor)
-          ? await engine.point(descriptor.id, descriptor.health_assertion.at)
+          ? await engine.point(descriptor.id, descriptor.health_assertion.at, {
+              ...(descriptor.health_assertion.at_time ? { atTime: descriptor.health_assertion.at_time } : {}),
+            })
           : undefined;
         const livePass = result
           ? checkAssertion(label, result, descriptor.health_assertion)
@@ -239,7 +241,9 @@ async function health(files: string[]): Promise<number> {
           limiter,
         });
         const result = supportsPointHealth(descriptor)
-          ? await engine.point(descriptor.id, descriptor.health_assertion.at)
+          ? await engine.point(descriptor.id, descriptor.health_assertion.at, {
+              ...(descriptor.health_assertion.at_time ? { atTime: descriptor.health_assertion.at_time } : {}),
+            })
           : undefined;
         const liveOk = result
           ? checkAssertion(label, result, descriptor.health_assertion)

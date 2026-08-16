@@ -130,12 +130,19 @@ export class LocalQueryEngine implements QueryEngine {
             };
       }
       if (d.terrain_analysis) {
-        summary.terrainAnalysis = {
-          kind: d.terrain_analysis.kind,
-          radiusM: d.terrain_analysis.radius_m,
-          observerHeightM: d.terrain_analysis.observer_height_m,
-          gridM: d.terrain_analysis.grid_m,
-        };
+        summary.terrainAnalysis = d.terrain_analysis.kind === 'viewshed'
+          ? {
+              kind: 'viewshed',
+              radiusM: d.terrain_analysis.radius_m,
+              observerHeightM: d.terrain_analysis.observer_height_m,
+              gridM: d.terrain_analysis.grid_m,
+            }
+          : {
+              kind: 'shadow',
+              radiusM: d.terrain_analysis.radius_m,
+              castDistanceM: d.terrain_analysis.cast_distance_m,
+              gridM: d.terrain_analysis.grid_m,
+            };
       }
       return summary;
     });
@@ -153,8 +160,18 @@ export class LocalQueryEngine implements QueryEngine {
       }
     }
     if (!this.covers(layer.descriptor, [at[0], at[1], at[0], at[1]])) return noCoverage();
-    const cacheKey = `${layerId}:${layer.hash}:point:${at[0].toFixed(6)},${at[1].toFixed(6)}`;
-    return this.run(layer, cacheKey, (adapter, io) => adapter.point(layer.descriptor, at, io));
+    let queryOptions = options;
+    let timeKey = '';
+    if (layer.descriptor.terrain_analysis?.kind === 'shadow') {
+      const atTime = options.atTime ?? new Date(Math.floor(this.io.now() / 60_000) * 60_000).toISOString();
+      if (!Number.isFinite(Date.parse(atTime))) {
+        return queryError('schema', `invalid shadow date/time '${atTime}'`);
+      }
+      queryOptions = { ...options, atTime: new Date(atTime).toISOString() };
+      timeKey = `:${queryOptions.atTime}`;
+    }
+    const cacheKey = `${layerId}:${layer.hash}:point:${at[0].toFixed(6)},${at[1].toFixed(6)}${timeKey}`;
+    return this.run(layer, cacheKey, (adapter, io) => adapter.point(layer.descriptor, at, io, queryOptions));
   }
 
   async tile(layerId: string, tile: Tile): Promise<LayerResult> {

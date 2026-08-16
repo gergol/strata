@@ -57,12 +57,19 @@ export interface LayerSummary {
         opacity: number;
         outlineColor: string;
       };
-  terrainAnalysis?: {
-    kind: 'viewshed';
-    radiusM: number;
-    observerHeightM: number;
-    gridM: number;
-  };
+  terrainAnalysis?:
+    | {
+        kind: 'viewshed';
+        radiusM: number;
+        observerHeightM: number;
+        gridM: number;
+      }
+    | {
+        kind: 'shadow';
+        radiusM: number;
+        castDistanceM: number;
+        gridM: number;
+      };
   /** R8.3: surfaced whenever the layer's health assertion is failing. */
   degraded: boolean;
 }
@@ -70,6 +77,8 @@ export interface LayerSummary {
 export interface PointQueryOptions {
   /** Current map zoom when a point model has an explicit semantic zoom floor. */
   zoom?: number;
+  /** ISO instant used by time-dependent models such as surface shadow. */
+  atTime?: string;
 }
 
 export interface QueryEngine {

@@ -64,6 +64,8 @@ const bboxSchema = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 const healthAssertionSchema = z
   .object({
     at: lonLatSchema,
+    /** Optional deterministic instant for time-dependent point models. */
+    at_time: z.string().datetime({ offset: true }).optional(),
     expect_range: z.tuple([z.number(), z.number()]).optional(),
     expect_min_count: z.number().int().nonnegative().optional(),
     expect_status: z.enum(['ok', 'empty']).optional(),
@@ -194,14 +196,26 @@ const featureStyleSchema = z.discriminatedUnion('kind', [
     .strict(),
 ]);
 
-const terrainAnalysisSchema = z
-  .object({
-    kind: z.literal('viewshed'),
-    radius_m: z.number().int().min(100).max(1_500),
-    observer_height_m: z.number().min(0.5).max(20).default(1.7),
-    grid_m: z.number().int().min(2).max(30),
-  })
-  .strict();
+const terrainAnalysisSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('viewshed'),
+      radius_m: z.number().int().min(100).max(1_500),
+      observer_height_m: z.number().min(0.5).max(20).default(1.7),
+      grid_m: z.number().int().min(2).max(30),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('shadow'),
+      /** Radius of the returned shadow surface around the selected point. */
+      radius_m: z.number().int().min(100).max(1_000),
+      /** Maximum terrain distance searched toward the sun for an occluder. */
+      cast_distance_m: z.number().int().min(100).max(1_500),
+      grid_m: z.number().int().min(2).max(30),
+    })
+    .strict(),
+]);
 
 export const layerDescriptorSchema = z
   .object({
@@ -349,6 +363,16 @@ export const layerDescriptorSchema = z
           code: z.ZodIssueCode.custom,
           path: ['feature_style'],
           message: 'terrain_analysis requires a fill feature_style',
+        });
+      }
+      if (
+        d.terrain_analysis.kind === 'shadow' &&
+        d.terrain_analysis.radius_m + d.terrain_analysis.cast_distance_m > 1_500
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['terrain_analysis', 'cast_distance_m'],
+          message: 'shadow radius_m + cast_distance_m must not exceed 1500 m',
         });
       }
     }

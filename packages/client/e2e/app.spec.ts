@@ -245,7 +245,7 @@ test.beforeEach(async ({ page }) => {
 test('queries the materialized energy and Overpass layers through the real worker', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('41 of 41 query layers')).toBeVisible();
+  await expect(page.getByText('42 of 42 query layers')).toBeVisible();
 
   const canvas = page.locator('.maplibregl-canvas');
   await expect(canvas).toBeVisible();
@@ -278,13 +278,40 @@ test('computes and maps a local COG viewshed through the worker', async ({ page 
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('Surface viewshed');
-  await expect(page.getByText('1 of 41 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 42 query layers')).toBeVisible();
 
   const panel = page.locator('section.panel').filter({ hasText: 'Surface viewshed (central Vienna)' });
   await panel.getByRole('button', { name: /Surface viewshed/ }).click();
   await expect(panel.locator('.analysis-summary')).toContainText('% visible within 500 m');
   await expect(panel.getByText('modelled locally from the surface raster')).toBeVisible();
   await expect(page.locator('.map-feature-summary')).toHaveText('1 map area · Surface viewshed (central Vienna)');
+  expect(consoleErrors).toEqual([]);
+});
+
+test('recomputes and maps local surface shadow for a selected date and time', async ({ page }) => {
+  await page.context().setGeolocation({ latitude: 48.208, longitude: 16.38, accuracy: 8 });
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  await page.goto('/');
+  const filter = page.getByRole('searchbox', { name: 'Filter layers' });
+  await filter.fill('Surface shadow');
+  await expect(page.getByText('1 of 42 query layers')).toBeVisible();
+
+  const panel = page.locator('section.panel').filter({ hasText: 'Surface shadow (central Vienna)' });
+  await panel.getByRole('button', { name: /Surface shadow/ }).click();
+  const time = panel.getByLabel('Date and time');
+  await expect(time).toBeVisible();
+  await time.fill('2026-06-21T12:00');
+  await panel.getByRole('button', { name: 'recompute shadow' }).click();
+  await expect(panel.locator('.analysis-summary')).toContainText('% shadow within 250 m');
+  await expect(panel.getByText('rays are capped at 250 m')).toBeVisible();
+  await expect(page.locator('.map-feature-summary')).toHaveText('1 map area · Surface shadow (central Vienna)');
+
+  await time.fill('2026-06-21T00:00');
+  await panel.getByRole('button', { name: 'recompute shadow' }).click();
+  await expect(panel.locator('.analysis-summary')).toContainText('100.0% shadow within 250 m · sun below horizon');
   expect(consoleErrors).toEqual([]);
 });
 
@@ -415,16 +442,16 @@ test('filters the expanded query catalogue by layer name or domain', async ({ pa
   await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
 
-  await expect(page.getByText('41 of 41 query layers')).toBeVisible();
+  await expect(page.getByText('42 of 42 query layers')).toBeVisible();
   await filter.fill('transport');
-  await expect(page.getByText('6 of 41 query layers')).toBeVisible();
+  await expect(page.getByText('6 of 42 query layers')).toBeVisible();
   await expect(page.getByRole('button', { name: /Bicycle parking/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /EV charging stations/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /International airports \(Wikidata\)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Soil pH/ })).toHaveCount(0);
 
   await filter.fill('bookcase');
-  await expect(page.getByText('1 of 41 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 42 query layers')).toBeVisible();
   const bookcase = page.getByRole('button', { name: /Public bookcases/ });
   await bookcase.click();
   await expect(page.locator('section.panel').filter({ hasText: 'Public bookcases' }).locator('.value')).toContainText('1');
@@ -437,7 +464,7 @@ test('queries and maps a linked Wikidata layer through the SPARQL adapter', asyn
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('Museums (Wikidata)');
-  await expect(page.getByText('1 of 41 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 42 query layers')).toBeVisible();
 
   const museums = page.locator('section.panel').filter({ hasText: 'Museums (Wikidata)' });
   await museums.getByRole('button', { name: /Museums \(Wikidata\)/ }).click();
@@ -456,7 +483,7 @@ test('renders Open-Meteo point samples without presenting them as observations o
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('European air-quality index');
-  await expect(page.getByText('1 of 41 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 42 query layers')).toBeVisible();
 
   const panel = page.locator('section.panel').filter({ hasText: 'European air-quality index now' });
   await panel.getByRole('button', { name: /European air-quality index/ }).click();
@@ -500,7 +527,7 @@ test('queries a zoom-gated cadastral layer through GetCapabilities-driven WFS', 
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('Cadastral parcels');
-  await expect(page.getByText('1 of 41 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 42 query layers')).toBeVisible();
 
   const cadastral = page.locator('section.panel').filter({ hasText: 'Cadastral parcels (NL)' });
   await cadastral.getByRole('button', { name: /Cadastral parcels/ }).click();

@@ -17,15 +17,16 @@ import type { GeoTIFF, GeoTIFFImage } from 'geotiff';
 import { fromUrl } from 'geotiff';
 import proj4 from 'proj4';
 import '../proj/igh.js'; // registers +proj=igh (SoilGrids), absent from stock proj4js
-import type { Adapter, AdapterOutcome } from '../adapter.js';
+import { AdapterError, type Adapter, type AdapterOutcome } from '../adapter.js';
 import { CRS_REGISTRY } from '../crs.js';
 import type { AggregationId, LayerDescriptor } from '../descriptor.js';
 import type { HistogramClass } from '../envelope.js';
+import type { PointQueryOptions } from '../engine.js';
 import type { IO } from '../io.js';
 import type { BBox, LonLat, Tile } from '../tile.js';
 import { tileToBBox } from '../tile.js';
 import { applyScale, isNodata } from '../units.js';
-import { computeViewshedMask } from '../terrain.js';
+import { computeShadowMask, computeViewshedMask, solarPosition } from '../terrain.js';
 
 /** Max pixels read per tile query; above this a coarser overview is forced. */
 const MAX_WINDOW_PIXELS = 512 * 512;
@@ -73,7 +74,7 @@ export class CogAdapter implements Adapter {
     return [lon as number, lat as number];
   }
 
-  async point(layer: LayerDescriptor, at: LonLat, io: IO): Promise<AdapterOutcome> {
+  async point(layer: LayerDescriptor, at: LonLat, io: IO, options: PointQueryOptions = {}): Promise<AdapterOutcome> {
     const tiff = await this.tiff(layer, io);
     const image = await tiff.getImage(0); // finest resolution for point reads
     const native = this.toNative(layer, at);
@@ -83,6 +84,9 @@ export class CogAdapter implements Adapter {
     }
     if (layer.terrain_analysis?.kind === 'viewshed') {
       return this.viewshed(layer, image, native, [minX, minY, maxX, maxY]);
+    }
+    if (layer.terrain_analysis?.kind === 'shadow') {
+      return this.shadow(layer, image, native, at, [minX, minY, maxX, maxY], options.atTime, io.now());
     }
     const col = Math.min(
       image.getWidth() - 1,
@@ -118,7 +122,7 @@ export class CogAdapter implements Adapter {
     bbox: BBox,
   ): Promise<AdapterOutcome> {
     const analysis = layer.terrain_analysis;
-    if (!analysis) throw new Error(`layer '${layer.id}' has no terrain analysis contract`);
+    if (!analysis || analysis.kind !== 'viewshed') throw new Error(`layer '${layer.id}' has no viewshed contract`);
     const [minX, minY, maxX, maxY] = bbox;
     const sourceWidth = image.getWidth();
     const sourceHeight = image.getHeight();
@@ -211,6 +215,128 @@ export class CogAdapter implements Adapter {
         ],
         truncated: false,
         summary: `${visiblePercent.toFixed(1)}% visible within ${analysis.radius_m} m · ${analysis.grid_m} m model grid`,
+      },
+      aggregation: 'feature_list',
+      basis: 'modelled',
+    };
+  }
+
+  private async shadow(
+    layer: LayerDescriptor,
+    image: GeoTIFFImage,
+    observer: NativePoint,
+    at: LonLat,
+    bbox: BBox,
+    atTime: string | undefined,
+    now: number,
+  ): Promise<AdapterOutcome> {
+    const analysis = layer.terrain_analysis;
+    if (!analysis || analysis.kind !== 'shadow') throw new Error(`layer '${layer.id}' has no shadow contract`);
+    const instant = new Date(atTime ?? now);
+    if (!Number.isFinite(instant.getTime())) throw new AdapterError('schema', `invalid shadow date/time '${atTime}'`);
+    const sun = solarPosition(instant, at);
+    const readRadius = analysis.radius_m + analysis.cast_distance_m;
+    const [minX, minY, maxX, maxY] = bbox;
+    if (
+      observer.x - readRadius < minX || observer.x + readRadius > maxX ||
+      observer.y - readRadius < minY || observer.y + readRadius > maxY
+    ) {
+      return { kind: 'no_coverage' };
+    }
+    const sourceWidth = image.getWidth();
+    const sourceHeight = image.getHeight();
+    const sourceCellWidth = (maxX - minX) / sourceWidth;
+    const sourceCellHeight = (maxY - minY) / sourceHeight;
+    const colOf = (x: number): number => Math.floor((x - minX) / sourceCellWidth);
+    const rowOf = (y: number): number => Math.floor((maxY - y) / sourceCellHeight);
+    const window: [number, number, number, number] = [
+      colOf(observer.x - readRadius),
+      rowOf(observer.y + readRadius),
+      colOf(observer.x + readRadius) + 1,
+      rowOf(observer.y - readRadius) + 1,
+    ];
+    const nativeWidth = (window[2] - window[0]) * sourceCellWidth;
+    const nativeHeight = (window[3] - window[1]) * sourceCellHeight;
+    const width = Math.max(2, Math.ceil(nativeWidth / analysis.grid_m));
+    const height = Math.max(2, Math.ceil(nativeHeight / analysis.grid_m));
+    const rasters = await image.readRasters({
+      window,
+      samples: [0],
+      width,
+      height,
+      resampleMethod: 'bilinear',
+    });
+    const values = rasters[0] as ArrayLike<number>;
+    const windowMinX = minX + window[0] * sourceCellWidth;
+    const windowMaxY = maxY - window[1] * sourceCellHeight;
+    const cellWidth = nativeWidth / width;
+    const cellHeight = nativeHeight / height;
+    const observerCol = Math.min(width - 1, Math.max(0, Math.floor((observer.x - windowMinX) / cellWidth)));
+    const observerRow = Math.min(height - 1, Math.max(0, Math.floor((windowMaxY - observer.y) / cellHeight)));
+    const mask = computeShadowMask({
+      values,
+      width,
+      height,
+      observerCol,
+      observerRow,
+      cellWidthM: cellWidth,
+      cellHeightM: cellHeight,
+      radiusM: analysis.radius_m,
+      castDistanceM: analysis.cast_distance_m,
+      sunAltitudeDegrees: sun.altitudeDegrees,
+      sunAzimuthDegrees: sun.azimuthDegrees,
+      ...(layer.nodata !== undefined ? { nodata: layer.nodata } : {}),
+    });
+    if (mask.consideredCells === 0) return { kind: 'empty' };
+
+    const polygons: LonLat[][][] = [];
+    for (let row = 0; row < height; row++) {
+      let col = 0;
+      while (col < width) {
+        while (col < width && mask.shadow[row * width + col] === 0) col++;
+        if (col >= width) break;
+        const start = col;
+        while (col < width && mask.shadow[row * width + col] === 1) col++;
+        const left = windowMinX + start * cellWidth;
+        const right = windowMinX + col * cellWidth;
+        const top = windowMaxY - row * cellHeight;
+        const bottom = top - cellHeight;
+        polygons.push([[
+          this.fromNative(layer, { x: left, y: bottom }),
+          this.fromNative(layer, { x: right, y: bottom }),
+          this.fromNative(layer, { x: right, y: top }),
+          this.fromNative(layer, { x: left, y: top }),
+          this.fromNative(layer, { x: left, y: bottom }),
+        ]]);
+      }
+    }
+
+    const shadowPercent = (mask.shadowCells / mask.consideredCells) * 100;
+    const sunSummary = sun.altitudeDegrees <= 0
+      ? `sun below horizon (${sun.altitudeDegrees.toFixed(1)}°)`
+      : `sun ${sun.altitudeDegrees.toFixed(1)}° high at ${sun.azimuthDegrees.toFixed(0)}° azimuth`;
+    return {
+      kind: 'ok',
+      value: {
+        kind: 'features',
+        features: [{
+          type: 'Feature',
+          geometry: { type: 'MultiPolygon', coordinates: polygons },
+          properties: {
+            name: 'Surface shadow',
+            at_time: instant.toISOString(),
+            radius_m: analysis.radius_m,
+            cast_distance_m: analysis.cast_distance_m,
+            grid_m: analysis.grid_m,
+            sun_altitude_degrees: Number(sun.altitudeDegrees.toFixed(2)),
+            sun_azimuth_degrees: Number(sun.azimuthDegrees.toFixed(2)),
+            shadow_cells: mask.shadowCells,
+            considered_cells: mask.consideredCells,
+            shadow_percent: Number(shadowPercent.toFixed(1)),
+          },
+        }],
+        truncated: false,
+        summary: `${shadowPercent.toFixed(1)}% shadow within ${analysis.radius_m} m · ${sunSummary}`,
       },
       aggregation: 'feature_list',
       basis: 'modelled',

@@ -23,6 +23,15 @@
   let result = $state<LayerResult | null>(null);
   let areaResult = $state<LayerResult | null>(null);
   let areaLoading = $state(false);
+  const initialShadowInstant = new Date();
+  initialShadowInstant.setSeconds(0, 0);
+  const localInputValue = (date: Date): string => {
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 16);
+  };
+  let shadowLocalTime = $state(localInputValue(initialShadowInstant));
+  let shadowAtTime = $state(initialShadowInstant.toISOString());
+  let shadowTimeError = $state('');
 
   const BASIS_LABEL: Record<string, string> = {
     aggregated: 'aggregated',
@@ -47,8 +56,11 @@
     let active = true;
     areaResult = null;
     loading = true;
+    const options = layer.terrainAnalysis?.kind === 'shadow'
+      ? { zoom, atTime: shadowAtTime }
+      : { zoom };
     engine
-      .point(layer.id, target, { zoom })
+      .point(layer.id, target, options)
       .then((r) => {
         if (!active) return;
         result = r;
@@ -66,6 +78,16 @@
       active = false;
     };
   });
+
+  function recomputeShadow(): void {
+    const instant = new Date(shadowLocalTime);
+    if (!Number.isFinite(instant.getTime())) {
+      shadowTimeError = 'Choose a valid date and time.';
+      return;
+    }
+    shadowTimeError = '';
+    shadowAtTime = instant.toISOString();
+  }
 
   function queryArea(): void {
     areaLoading = true;
@@ -173,6 +195,21 @@
   </button>
   {#if expanded}
     <div class="body" id={`panel-body-${layer.id}`} aria-busy={loading || areaLoading}>
+      {#if layer.terrainAnalysis?.kind === 'shadow'}
+        <div class="shadow-controls">
+          <label for={`shadow-time-${layer.id}`}>Date and time</label>
+          <div class="shadow-control-row">
+            <input
+              id={`shadow-time-${layer.id}`}
+              type="datetime-local"
+              bind:value={shadowLocalTime}
+            />
+            <button class="shadow-btn" onclick={recomputeShadow}>recompute shadow</button>
+          </div>
+          <div class="time-note">Uses this device’s local time.</div>
+          {#if shadowTimeError}<div class="time-error" role="alert">{shadowTimeError}</div>{/if}
+        </div>
+      {/if}
       {#if loading}
         <div class="state" role="status">querying…</div>
       {:else if result}
@@ -180,7 +217,11 @@
       {/if}
       {#if layer.terrainAnalysis}
         <div class="analysis-note">
-          Surface viewshed at {layer.terrainAnalysis.observerHeightM} m eye height; {layer.terrainAnalysis.gridM} m model grid.
+          {#if layer.terrainAnalysis.kind === 'viewshed'}
+            Surface viewshed at {layer.terrainAnalysis.observerHeightM} m eye height; {layer.terrainAnalysis.gridM} m model grid.
+          {:else}
+            Surface shadow on a {layer.terrainAnalysis.gridM} m model grid; rays are capped at {layer.terrainAnalysis.castDistanceM} m.
+          {/if}
           Click another covered point to recompute locally.
         </div>
       {/if}
@@ -221,7 +262,9 @@
     background: #1f242c;
   }
   .head:focus-visible,
-  .area-btn:focus-visible {
+  .area-btn:focus-visible,
+  .shadow-btn:focus-visible,
+  .shadow-controls input:focus-visible {
     outline: 2px solid #7ab8f5;
     outline-offset: -2px;
   }
@@ -297,6 +340,49 @@
     font-size: 0.76rem;
     line-height: 1.4;
     margin-top: 0.4rem;
+  }
+  .shadow-controls {
+    display: grid;
+    gap: 0.3rem;
+    margin: 0.55rem 0 0.35rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px dashed #2c333c;
+  }
+  .shadow-controls label {
+    color: #c4cad2;
+    font-size: 0.76rem;
+    font-weight: 650;
+  }
+  .shadow-control-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .shadow-controls input {
+    box-sizing: border-box;
+    min-width: 12.5rem;
+    border: 1px solid #3b4551;
+    border-radius: 5px;
+    background: #11151a;
+    color: #d7dce2;
+    padding: 0.38rem 0.48rem;
+    color-scheme: dark;
+  }
+  .shadow-btn {
+    border: 1px solid #6752ad;
+    border-radius: 5px;
+    background: #2d2451;
+    color: #d9d0fa;
+    padding: 0.38rem 0.6rem;
+    cursor: pointer;
+  }
+  .time-note,
+  .time-error {
+    color: #7e8893;
+    font-size: 0.7rem;
+  }
+  .time-error {
+    color: #e08a8a;
   }
   .meta {
     display: flex;

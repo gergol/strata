@@ -102,6 +102,7 @@ jobs:
               "layers/imagery_overlays.yaml#nasa_gibs_modis_terra_true_color"
               "layers/imagery_overlays.yaml#vienna_aerial_1971"
               layers/worldcover_2021.yaml
+              layers/vienna_shadow.yaml
             )
           fi
           for attempt in 1 2 3; do

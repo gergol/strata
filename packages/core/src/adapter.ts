@@ -9,6 +9,7 @@
  */
 import type { LayerDescriptor } from './descriptor.js';
 import type { AggregationId } from './descriptor.js';
+import type { PointQueryOptions } from './engine.js';
 import type { ErrorKind, ResultValue, ResultBasis } from './envelope.js';
 import type { IO } from './io.js';
 import type { LonLat, Tile } from './tile.js';
@@ -36,7 +37,7 @@ export class AdapterError extends Error {
 }
 
 export interface Adapter {
-  point(layer: LayerDescriptor, at: LonLat, io: IO): Promise<AdapterOutcome>;
+  point(layer: LayerDescriptor, at: LonLat, io: IO, options?: PointQueryOptions): Promise<AdapterOutcome>;
   tile(layer: LayerDescriptor, tile: Tile, io: IO): Promise<AdapterOutcome>;
   /** How M3 renders this layer; null when the layer has no overlay form. */
   overlaySpec?(layer: LayerDescriptor): unknown | null;

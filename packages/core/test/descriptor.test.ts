@@ -185,6 +185,39 @@ describe('descriptor validation (R6.2, R6.3, R8.4)', () => {
     failsMentioning({ ...viewshed, terrain_analysis: { ...viewshed.terrain_analysis, radius_m: 2_000 } }, 'radius_m');
   });
 
+  it('strictly validates a bounded date/time surface-shadow contract', () => {
+    const shadow = {
+      ...valid,
+      id: 'vienna_shadow',
+      domain: 'terrain',
+      crs: 'EPSG:31256',
+      modes: ['point'],
+      value_type: 'feature',
+      aggregation: undefined,
+      unit: undefined,
+      native_unit: undefined,
+      scale_factor: undefined,
+      terrain_analysis: { kind: 'shadow', radius_m: 250, cast_distance_m: 250, grid_m: 10 },
+      feature_style: { kind: 'fill', color: '#6546c7' },
+      health_assertion: {
+        at: [16.3826, 48.2096],
+        at_time: '2026-06-21T10:00:00Z',
+        expect_min_count: 1,
+      },
+    };
+    const descriptor = parseDescriptor(shadow);
+    expect(descriptor.terrain_analysis).toMatchObject({ kind: 'shadow', cast_distance_m: 250 });
+    expect(descriptor.health_assertion.at_time).toBe('2026-06-21T10:00:00Z');
+    failsMentioning(
+      { ...shadow, terrain_analysis: { ...shadow.terrain_analysis, radius_m: 1_000, cast_distance_m: 600 } },
+      'must not exceed 1500 m',
+    );
+    failsMentioning(
+      { ...shadow, health_assertion: { ...shadow.health_assertion, at_time: 'midsummer noon' } },
+      'datetime',
+    );
+  });
+
   it('validates a descriptor-driven raster overlay contract', () => {
     const overlay = {
       kind: 'raster',

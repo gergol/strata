@@ -81,8 +81,8 @@ export { BBoxVectorAdapter } from './adapters/bbox-vector.js';
 export { RegionAdapter, parseEnergyChartsPublicPower } from './adapters/region.js';
 export { findContainingFeature, pointInFeature } from './geometry.js';
 export type { GeoJsonFeature, GeoJsonFeatureCollection } from './geometry.js';
-export { computeViewshedMask } from './terrain.js';
-export type { ViewshedGrid, ViewshedMask } from './terrain.js';
+export { computeShadowMask, computeViewshedMask, solarPosition } from './terrain.js';
+export type { ShadowGrid, ShadowMask, SolarPosition, ViewshedGrid, ViewshedMask } from './terrain.js';
 
 import { CogAdapter as CogAdapterClass } from './adapters/cog.js';
 import { BBoxVectorAdapter as BBoxVectorAdapterClass } from './adapters/bbox-vector.js';

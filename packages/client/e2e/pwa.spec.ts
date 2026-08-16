@@ -9,5 +9,5 @@ test('serves the application shell after the browser goes offline', async ({ con
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('44 layers loaded.')).toBeVisible();
+  await expect(page.getByText('45 layers loaded.')).toBeVisible();
 });

@@ -33,6 +33,19 @@ async function syntheticTiff(values?: number[]): Promise<GeoTIFF> {
   return fromArrayBuffer(buffer as ArrayBuffer);
 }
 
+async function projectedSurfaceTiff(): Promise<GeoTIFF> {
+  const buffer = await writeArrayBuffer(Array.from({ length: SIZE * SIZE }, () => 100), {
+    width: SIZE,
+    height: SIZE,
+    ModelPixelScale: [20, 20, 0],
+    ModelTiepoint: [0, 0, 0, 3_110, 341_890, 0],
+    GTModelTypeGeoKey: 1,
+    GTRasterTypeGeoKey: 1,
+    ProjectedCSTypeGeoKey: 31256,
+  } as Parameters<typeof writeArrayBuffer>[1]);
+  return fromArrayBuffer(buffer as ArrayBuffer);
+}
+
 function makeIo(): IO {
   return {
     fetch: (async () => {
@@ -89,6 +102,45 @@ describe('CogAdapter point reads', () => {
     const adapter = adapterFor(await syntheticTiff());
     const r = await adapter.point(numericDescriptor, [2, 40], makeIo());
     expect(r).toEqual({ kind: 'no_coverage' });
+  });
+
+  it('returns a time-stamped modelled shadow surface below the horizon', async () => {
+    const shadowDescriptor = parseDescriptor({
+      ...JSON.parse(JSON.stringify(numericDescriptor)),
+      id: 'synthetic_shadow',
+      domain: 'terrain',
+      crs: 'EPSG:31256',
+      modes: ['point'],
+      zoom_valid: [13, 22],
+      value_type: 'feature',
+      aggregation: undefined,
+      unit: undefined,
+      scale_factor: undefined,
+      nodata: undefined,
+      terrain_analysis: { kind: 'shadow', radius_m: 250, cast_distance_m: 250, grid_m: 10 },
+      feature_style: { kind: 'fill', color: '#6546c7' },
+      health_assertion: {
+        at: [16.38259, 48.20964],
+        at_time: '2026-06-21T22:00:00Z',
+        expect_min_count: 1,
+      },
+    });
+    const adapter = adapterFor(await projectedSurfaceTiff());
+    const r = await adapter.point(
+      shadowDescriptor,
+      [16.38259, 48.20964],
+      makeIo(),
+      { atTime: '2026-06-21T22:00:00Z' },
+    );
+    expect(r).toMatchObject({
+      kind: 'ok',
+      basis: 'modelled',
+      value: {
+        kind: 'features',
+        summary: expect.stringMatching(/^100\.0% shadow within 250 m · sun below horizon/),
+        features: [{ properties: { at_time: '2026-06-21T22:00:00.000Z', shadow_percent: 100 } }],
+      },
+    });
   });
 });
 

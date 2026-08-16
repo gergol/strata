@@ -113,6 +113,47 @@ describe('cache (R7.2, plan §4.3)', () => {
     expect(isOk(r2) && r2.cacheHit).toBe(true);
   });
 
+  it('keys a shadow model by its normalized analysis instant', async () => {
+    const w = makeWorld({
+      id: 'terrain_shadow',
+      domain: 'terrain',
+      crs: 'EPSG:31256',
+      modes: ['point'],
+      zoom_valid: [13, 22],
+      value_type: 'feature',
+      aggregation: undefined,
+      unit: undefined,
+      scale_factor: undefined,
+      terrain_analysis: { kind: 'shadow', radius_m: 250, cast_distance_m: 250, grid_m: 10 },
+      feature_style: { kind: 'fill', color: '#6546c7' },
+      health_assertion: { at: [16.38, 48.21], at_time: '2026-06-21T10:00:00Z', expect_min_count: 1 },
+    });
+    await w.engine.point('terrain_shadow', [16.38, 48.21], { zoom: 13, atTime: '2026-06-21T10:00:00Z' });
+    await w.engine.point('terrain_shadow', [16.38, 48.21], { zoom: 13, atTime: '2026-06-21T12:00:00+02:00' });
+    await w.engine.point('terrain_shadow', [16.38, 48.21], { zoom: 13, atTime: '2026-06-21T11:00:00Z' });
+    expect(w.calls()).toBe(2);
+  });
+
+  it('rejects an invalid shadow instant before opening the adapter', async () => {
+    const w = makeWorld({
+      id: 'terrain_shadow',
+      domain: 'terrain',
+      crs: 'EPSG:31256',
+      modes: ['point'],
+      zoom_valid: [13, 22],
+      value_type: 'feature',
+      aggregation: undefined,
+      unit: undefined,
+      scale_factor: undefined,
+      terrain_analysis: { kind: 'shadow', radius_m: 250, cast_distance_m: 250, grid_m: 10 },
+      feature_style: { kind: 'fill', color: '#6546c7' },
+      health_assertion: { at: [16.38, 48.21], expect_min_count: 1 },
+    });
+    const result = await w.engine.point('terrain_shadow', [16.38, 48.21], { zoom: 13, atTime: 'tomorrowish' });
+    expect(result).toMatchObject({ status: 'error', kind: 'schema' });
+    expect(w.calls()).toBe(0);
+  });
+
   it('refetches after the descriptor ttl expires', async () => {
     const w = makeWorld();
     await w.engine.point('test_ph', [16.37, 48.21]);

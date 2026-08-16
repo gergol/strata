@@ -1,0 +1,41 @@
+# M2.2b — date/time surface-shadow model. The worker range-reads a bounded
+# surface window, computes the sun position, and casts capped terrain rays.
+id: vienna_surface_shadow
+name: Surface shadow (central Vienna)
+domain: terrain
+adapter: cog
+endpoint: https://gergol.github.io/strata/data/derived/vienna-35_4-dom-2m.cog.tif
+crs: EPSG:31256
+modes: [point]
+zoom_valid: [13, 22]
+value_type: feature
+nodata: -9999
+ttl: 30d
+rate_limit:
+  max_concurrent: 2
+  min_interval_ms: 0
+licence: CC-BY-4.0
+commercial_use: true
+attribution: "Datenquelle: Stadt Wien – data.wien.gv.at"
+attribution_url: https://www.wien.gv.at/stadtplanung/digitales-gelaendemodell-daten-beziehen
+health_assertion:
+  at: [16.38259, 48.20964]
+  at_time: "2026-06-21T10:00:00Z"
+  expect_min_count: 1
+# The 250 m output plus 250 m cast cap needs the same complete 500 m source window as viewshed.
+coverage:
+  bbox: [16.373, 48.203, 16.392, 48.2163]
+provenance_note: "Modelled locally from the City of Vienna 2015 airborne-laser surface model tile 35_4, averaged to a deterministic 2 m COG; the 10 m model includes buildings and vegetation, ignores translucency and sub-grid detail, caps shadow-casting rays at 250 m, and is not a surveyed illumination result"
+browser_access: materialized
+terrain_analysis:
+  kind: shadow
+  radius_m: 250
+  cast_distance_m: 250
+  grid_m: 10
+feature_style:
+  kind: fill
+  color: "#6546c7"
+  opacity: 0.68
+  outline_color: "#3f2a8c"
+params:
+  materialization_kind: static_cog
