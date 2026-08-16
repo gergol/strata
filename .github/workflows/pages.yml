@@ -85,6 +85,8 @@ jobs:
               "layers/osm_pois.yaml#osm_drinking_water"
               layers/soilgrids_ph.yaml
               "layers/wikidata_places.yaml#wikidata_lighthouses"
+              "layers/wfs_features.yaml#natura2000_nl"
+              "layers/wfs_features.yaml#flood_hazard_zones_vienna"
               layers/worldcover_2021.yaml
             )
           fi

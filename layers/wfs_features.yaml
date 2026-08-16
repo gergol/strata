@@ -1,0 +1,101 @@
+# M1.4 generic WFS/INSPIRE proofs. Each layer is discovered and validated
+# through GetCapabilities before bounded GeoJSON GetFeature requests run.
+defaults:
+  adapter: bbox_vector
+  modes: [point, tile]
+  value_type: feature
+  aggregation:
+    primary: count
+    secondary: [feature_list]
+  commercial_use: true
+  browser_access: direct
+  search_beyond_tile: true
+  params:
+    protocol: wfs
+    wfs_version: 2.0.0
+
+layers:
+  - id: natura2000_nl
+    name: Natura 2000 protected sites (NL)
+    domain: environment
+    endpoint: https://service.pdok.nl/rvo/beschermde-gebieden/natura2000/wfs/v2_0
+    crs: EPSG:4326
+    zoom_valid: [7, 18]
+    ttl: 30d
+    rate_limit:
+      group: pdok-wfs
+      max_concurrent: 1
+      min_interval_ms: 300
+    licence: Public Domain Mark 1.0
+    attribution: Rijksdienst voor Ondernemend Nederland (RVO), via PDOK
+    attribution_url: https://www.pdok.nl/ogc-webservices/-/article/natura2000-inspire-geharmoniseerd-
+    health_assertion:
+      at: [5.85, 52.083]
+      expect_min_count: 1
+    coverage:
+      bbox: [3.0, 50.5, 7.5, 54.0]
+    provenance_note: "Official Dutch INSPIRE-harmonised Natura 2000 site boundaries; designations and geometry follow RVO's published dataset and may change when designation decisions change"
+    params:
+      wfs_type_name: beschermde-gebieden:protectedsite
+      wfs_srs_name: urn:ogc:def:crs:EPSG::4326
+      wfs_axis_order: yx
+      wfs_label_fields: [sitenameGeographicalnameSpellingSpellingofnameText]
+      point_radius_m: 200
+      feature_cap: 50
+
+  - id: cadastral_parcels_nl
+    name: Cadastral parcels (NL)
+    domain: built
+    endpoint: https://service.pdok.nl/kadaster/kadastralekaart/wfs/v5_0
+    crs: EPSG:4326
+    zoom_valid: [18, 22]
+    ttl: 1d
+    rate_limit:
+      group: pdok-wfs
+      max_concurrent: 1
+      min_interval_ms: 300
+    licence: CC-BY-4.0
+    attribution: Kadaster, via PDOK
+    attribution_url: https://www.pdok.nl/ogc-webservices/-/article/kadastrale-kaart
+    health_assertion:
+      at: [4.885, 52.36]
+      expect_min_count: 1
+    coverage:
+      bbox: [3.2, 50.7, 7.3, 53.7]
+    provenance_note: "Official Dutch cadastral reference map; parcel positions and boundaries are indicative and no dimensions or legal boundary conclusions may be derived from this layer"
+    params:
+      wfs_type_name: kadastralekaart:Perceel
+      wfs_srs_name: urn:ogc:def:crs:EPSG::4326
+      wfs_axis_order: yx
+      wfs_label_fields: [kadastraleGemeenteWaarde, sectie, perceelnummer]
+      point_radius_m: 20
+      feature_cap: 25
+
+  - id: flood_hazard_zones_vienna
+    name: Flood hazard zones (Vienna)
+    domain: environment
+    endpoint: https://data.wien.gv.at/daten/geo
+    crs: EPSG:31256
+    zoom_valid: [12, 20]
+    ttl: 30d
+    rate_limit:
+      group: vienna-wfs
+      max_concurrent: 1
+      min_interval_ms: 500
+    licence: CC-BY-4.0
+    attribution: "Datenquelle: Stadt Wien – data.wien.gv.at"
+    attribution_url: https://www.data.gv.at/katalog/dataset/da8fc842-d9cd-4a8b-9dcf-642ebdbc9049
+    health_assertion:
+      at: [16.1928, 48.2332]
+      expect_min_count: 1
+    coverage:
+      bbox: [16.1916, 48.1233, 16.4721, 48.2670]
+    provenance_note: "Official City of Vienna flood-hazard planning zones; zone classifications are planning information based on the relevant hydraulic studies, not a live flood observation"
+    params:
+      wfs_type_name: ogdwien:HWGEFAHROGD
+      wfs_srs_name: urn:ogc:def:crs:EPSG::31256
+      wfs_axis_order: xy
+      wfs_output_format: application/json
+      wfs_label_fields: [GEWAESSER, GFZ_TEXT]
+      point_radius_m: 30
+      feature_cap: 25

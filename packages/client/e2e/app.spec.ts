@@ -23,6 +23,16 @@ const transparentPng = Buffer.from(
   'base64',
 );
 
+function wfsCapabilities(typeName: string, crs = 'urn:ogc:def:crs:EPSG::4326'): string {
+  return `<?xml version="1.0"?>
+<wfs:WFS_Capabilities xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:ows="http://www.opengis.net/ows/1.1" version="2.0.0">
+  <ows:OperationsMetadata><ows:Operation name="GetFeature">
+    <ows:Parameter name="outputFormat"><ows:AllowedValues><ows:Value>application/json; subtype=geojson</ows:Value><ows:Value>application/json</ows:Value></ows:AllowedValues></ows:Parameter>
+  </ows:Operation></ows:OperationsMetadata>
+  <wfs:FeatureTypeList><wfs:FeatureType><wfs:Name>${typeName}</wfs:Name><wfs:DefaultCRS>${crs}</wfs:DefaultCRS></wfs:FeatureType></wfs:FeatureTypeList>
+</wfs:WFS_Capabilities>`;
+}
+
 async function mockExternalData(page: Page): Promise<void> {
   await page.route('https://tiles.openfreemap.org/styles/liberty', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(minimalStyle), headers: corsHeaders }),
@@ -76,6 +86,34 @@ async function mockExternalData(page: Page): Promise<void> {
       headers: corsHeaders,
     });
   });
+  await page.route('https://service.pdok.nl/**', (route) => {
+    const url = new URL(route.request().url());
+    const cadastral = url.pathname.includes('kadastralekaart');
+    const typeName = cadastral ? 'kadastralekaart:Perceel' : 'beschermde-gebieden:protectedsite';
+    if (url.searchParams.get('request') === 'GetCapabilities') {
+      return route.fulfill({ status: 200, contentType: 'application/xml', body: wfsCapabilities(typeName), headers: corsHeaders });
+    }
+    if (url.searchParams.get('resultType') === 'hits') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/xml',
+        body: '<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" numberMatched="1" numberReturned="0"/>',
+        headers: corsHeaders,
+      });
+    }
+    const properties = cadastral
+      ? { kadastraleGemeenteWaarde: 'Amsterdam', sectie: 'R', perceelnummer: 7006 }
+      : { sitenameGeographicalnameSpellingSpellingofnameText: 'Test reserve' };
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        type: 'FeatureCollection',
+        features: [{ type: 'Feature', id: 'test.1', geometry: { type: 'Point', coordinates: [4.885, 52.36] }, properties }],
+      }),
+      headers: corsHeaders,
+    });
+  });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -87,7 +125,7 @@ test.beforeEach(async ({ page }) => {
 test('queries the materialized energy and Overpass layers through the real worker', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('27 of 27 query layers')).toBeVisible();
+  await expect(page.getByText('30 of 30 query layers')).toBeVisible();
 
   const canvas = page.locator('.maplibregl-canvas');
   await expect(canvas).toBeVisible();
@@ -218,16 +256,16 @@ test('filters the expanded query catalogue by layer name or domain', async ({ pa
   await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
 
-  await expect(page.getByText('27 of 27 query layers')).toBeVisible();
+  await expect(page.getByText('30 of 30 query layers')).toBeVisible();
   await filter.fill('transport');
-  await expect(page.getByText('3 of 27 query layers')).toBeVisible();
+  await expect(page.getByText('3 of 30 query layers')).toBeVisible();
   await expect(page.getByRole('button', { name: /Bicycle parking/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /EV charging stations/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /International airports \(Wikidata\)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Soil pH/ })).toHaveCount(0);
 
   await filter.fill('bookcase');
-  await expect(page.getByText('1 of 27 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 30 query layers')).toBeVisible();
   const bookcase = page.getByRole('button', { name: /Public bookcases/ });
   await bookcase.click();
   await expect(page.locator('section.panel').filter({ hasText: 'Public bookcases' }).locator('.value')).toContainText('1');
@@ -240,7 +278,7 @@ test('queries and maps a linked Wikidata layer through the SPARQL adapter', asyn
   await page.goto('/');
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
   await filter.fill('Museums (Wikidata)');
-  await expect(page.getByText('1 of 27 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 30 query layers')).toBeVisible();
 
   const museums = page.locator('section.panel').filter({ hasText: 'Museums (Wikidata)' });
   await museums.getByRole('button', { name: /Museums \(Wikidata\)/ }).click();
@@ -253,6 +291,23 @@ test('queries and maps a linked Wikidata layer through the SPARQL adapter', asyn
 
   await museums.getByRole('button', { name: /area stats/ }).click();
   await expect(museums.getByText('count', { exact: true })).toBeVisible();
+});
+
+test('queries a zoom-gated cadastral layer through GetCapabilities-driven WFS', async ({ page }) => {
+  await page.context().setGeolocation({ latitude: 52.36, longitude: 4.885, accuracy: 10 });
+  await page.goto('/');
+  const filter = page.getByRole('searchbox', { name: 'Filter layers' });
+  await filter.fill('Cadastral parcels');
+  await expect(page.getByText('1 of 30 query layers')).toBeVisible();
+
+  const cadastral = page.locator('section.panel').filter({ hasText: 'Cadastral parcels (NL)' });
+  await cadastral.getByRole('button', { name: /Cadastral parcels/ }).click();
+  await expect(cadastral.locator('.value').first()).toContainText('1');
+  await expect(cadastral.getByText('Amsterdam · R · 7006')).toBeVisible();
+  await expect(cadastral.getByText('nearest — searched around the point')).toBeVisible();
+
+  await cadastral.getByRole('button', { name: /area stats/ }).click();
+  await expect(cadastral.getByText(/only meaningful between z18 and z22 \(queried at z14\)/)).toBeVisible();
 });
 
 test('stores and removes BYOK values without rendering the stored value', async ({ page }) => {
