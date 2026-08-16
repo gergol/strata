@@ -80,7 +80,12 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             layer_files=(layers/grid_generation_mix.yaml)
           else
-            layer_files=(layers/*.yaml)
+            layer_files=(
+              layers/grid_generation_mix.yaml
+              "layers/osm_pois.yaml#osm_drinking_water"
+              layers/soilgrids_ph.yaml
+              layers/worldcover_2021.yaml
+            )
           fi
           for attempt in 1 2 3; do
             if npx tsx packages/runner/src/verify.ts verify "${layer_files[@]}"; then

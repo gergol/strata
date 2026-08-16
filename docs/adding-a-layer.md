@@ -96,6 +96,8 @@ npx tsx packages/runner/src/verify.ts verify layers/your_layer.yaml
 
 The final command performs the live assertion and browser-access checks. For a new materialized endpoint, deploy it to a preview or Pages first; the production smoke job runs the same command after deployment.
 
+For a descriptor pack, append `#layer_id` to verify one entry (for example `layers/osm_pois.yaml#osm_drinking_water`). Deployment smoke uses one representative canary per shared provider; the scheduled health workflow expands every pack entry and remains the exhaustive per-layer check.
+
 ## 7. Review the change boundary
 
 A descriptor-only layer should normally touch `layers/` plus any static region pack or attribution fixture. If it requires adapter code, state the missing generic capability and test it with at least two descriptor-shaped cases before calling it reusable. Do not hide provider-specific parsing in UI code.

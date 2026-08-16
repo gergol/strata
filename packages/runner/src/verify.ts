@@ -112,9 +112,18 @@ function supportsPointHealth(descriptor: { modes: readonly string[] }): boolean 
   return descriptor.modes.includes('point');
 }
 
-function fileLayers(file: string): Array<{ label: string; descriptor: LayerDescriptor }> {
+function fileLayers(target: string): Array<{ label: string; descriptor: LayerDescriptor }> {
+  const separator = target.lastIndexOf('#');
+  const file = separator === -1 ? target : target.slice(0, separator);
+  const selectedId = separator === -1 ? undefined : target.slice(separator + 1);
   const descriptors = loadDescriptorsYaml(readFileSync(file, 'utf8'));
-  return descriptors.map((descriptor) => ({
+  const selected = selectedId === undefined
+    ? descriptors
+    : descriptors.filter((descriptor) => descriptor.id === selectedId);
+  if (selected.length === 0) {
+    throw new Error(`descriptor pack '${file}' has no layer '${selectedId}'`);
+  }
+  return selected.map((descriptor) => ({
     label: descriptors.length === 1 ? file : `${file}#${descriptor.id}`,
     descriptor,
   }));
