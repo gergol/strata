@@ -14,8 +14,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Install PMTiles derivation tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes tippecanoe
       - run: npm run typecheck
       - run: npm test
+      - run: npm run derive:smoke
       - run: npm run build -w @strata/client
       - run: npm run bundle:check
       - run: npx playwright install --with-deps chromium

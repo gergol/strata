@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "derivation_smoke",
+  "source": {
+    "url": "https://github.com/gergol/strata/blob/main/regions/bidding-zones.json",
+    "release": "Strata Phase 0 coarse region fixture",
+    "sha256": "01a49001e7d1facc5a930509c82b676f99380312de0e545f55f1e7f7909cdc93",
+    "licence": "AGPL-3.0"
+  },
+  "input": {
+    "path": "regions/bidding-zones.json",
+    "format": "geojson",
+    "sha256": "01a49001e7d1facc5a930509c82b676f99380312de0e545f55f1e7f7909cdc93"
+  },
+  "transformations": ["none"],
+  "output": {
+    "path": ".cache/derive/derivation-smoke.pmtiles",
+    "publication": { "kind": "local" }
+  },
+  "tiles": {
+    "layer": "bidding_zones",
+    "name": "Strata derivation smoke archive",
+    "description": "A tiny deterministic archive used to exercise the M2.1 derivation toolchain.",
+    "attribution": "Strata",
+    "min_zoom": 0,
+    "max_zoom": 8,
+    "include_properties": ["id", "name"]
+  }
+}

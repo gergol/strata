@@ -1,0 +1,83 @@
+name: publish-derived
+on:
+  workflow_dispatch:
+    inputs:
+      recipe:
+        description: "Committed derive recipe JSON"
+        required: true
+        type: string
+      release_tag:
+        description: "Existing GitHub Release tag (required only for release publication)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: derived-publication
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install offline geospatial tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gdal-bin tippecanoe
+      - name: Build and verify archive
+        env:
+          RECIPE: ${{ inputs.recipe }}
+        run: |
+          npm run derive:pmtiles -- build "$RECIPE"
+          npm run derive:pmtiles -- verify "$RECIPE"
+      - id: artifact
+        name: Resolve publication contract
+        env:
+          RECIPE: ${{ inputs.recipe }}
+        run: |
+          metadata="$(npm run --silent derive:pmtiles -- paths "$RECIPE")"
+          echo "id=$(jq -r .id <<<"$metadata")" >> "$GITHUB_OUTPUT"
+          echo "artifact=$(jq -r .artifact <<<"$metadata")" >> "$GITHUB_OUTPUT"
+          echo "provenance=$(jq -r .provenance <<<"$metadata")" >> "$GITHUB_OUTPUT"
+          echo "kind=$(jq -r .publication.kind <<<"$metadata")" >> "$GITHUB_OUTPUT"
+      - name: Publish bounded artifact through Pages
+        if: steps.artifact.outputs.kind == 'pages'
+        env:
+          ARTIFACT: ${{ steps.artifact.outputs.artifact }}
+          PROVENANCE: ${{ steps.artifact.outputs.provenance }}
+          DERIVATION_ID: ${{ steps.artifact.outputs.id }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main" || {
+            echo "Pages artifacts must be published from main, got $GITHUB_REF" >&2
+            exit 2
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$ARTIFACT" "$PROVENANCE"
+          git commit -m "data: publish $DERIVATION_ID PMTiles artifact"
+          git push
+      - name: Publish large artifact through an existing Release
+        if: steps.artifact.outputs.kind == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ARTIFACT: ${{ steps.artifact.outputs.artifact }}
+          PROVENANCE: ${{ steps.artifact.outputs.provenance }}
+        run: |
+          test -n "$RELEASE_TAG" || { echo "release_tag is required for release publication" >&2; exit 2; }
+          gh release view "$RELEASE_TAG" >/dev/null
+          gh release upload "$RELEASE_TAG" "$ARTIFACT" "$PROVENANCE"
+      - name: Reject local-only recipes
+        if: steps.artifact.outputs.kind == 'local'
+        run: |
+          echo "Local smoke recipes cannot be externally published." >&2
+          exit 2

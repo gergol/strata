@@ -10,7 +10,9 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc -p packages/core && tsc -p packages/core/tsconfig.test.json && tsc -p packages/runner && tsc -p tsconfig.e2e.json",
     "materialize": "tsx packages/runner/src/materialize.ts packages/client/public/data layers/grid_generation_mix.yaml",
-    "bundle:check": "tsx packages/runner/src/check-bundle.ts packages/client/dist"
+    "bundle:check": "tsx packages/runner/src/check-bundle.ts packages/client/dist",
+    "derive:pmtiles": "tsx packages/runner/src/derive-pmtiles.ts",
+    "derive:smoke": "npm run derive:pmtiles -- reproduce derive/smoke.pmtiles.json"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

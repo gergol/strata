@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@strata/core": "*"
+    "@strata/core": "*",
+    "pmtiles": "^4.5.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "tsx": "^4.19.0"
