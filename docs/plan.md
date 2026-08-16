@@ -300,6 +300,10 @@ The first WFS pack adds three official browser-direct layers: Dutch INSPIRE Natu
 
 The catalogue now contains 31 layers, 30 of them queryable. This package intentionally stops at read-only KVP WFS with advertised GeoJSON: transactional WFS, arbitrary GML application-schema parsing, vector overlay styling, and general bulk materializer recipes remain outside M1.4. M1.5 point-sample weather and air-quality layers is next.
 
+**M1.5 — Point-sample weather and air quality (2026-08-16).** The A4 adapter now builds descriptor-driven JSON queries, extracts a pinned numeric response field and source timestamp, and can batch an odd 1×1 to 5×5 coordinate grid when the provider supports multi-coordinate requests. Point values and tile-grid means both return `basis: sampled`; the UI says explicitly that these model samples are not observations or area statistics. Null/nodata, malformed fields, timeouts, rate limits, and upstream failures retain distinct envelope semantics.
+
+The first pack adds modelled 2 m temperature, consolidated European AQI, and European ragweed-pollen forecasts from Open-Meteo (with CAMS attribution where applicable). All three pass live data and production-origin CORS checks. The catalogue now contains 34 layers, 33 queryable. M1.6 precomputed/quadkey materializations is next.
+
 **Point-mode geolocation (2026-08-16).** The primary interaction now fulfills requirements §2 directly: on startup the browser requests the current location, selects it as the active query coordinate, centers the map, and shows a distinct marker. A keyboard-accessible map control repeats the lookup. Permission denial, timeout, unavailable positioning, and unsupported browsers are announced without blocking map-click selection; a late location response cannot overwrite a newer manual choice.
 
 ### Phase 2 — differentiators
