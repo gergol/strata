@@ -59,6 +59,23 @@ async function mockExternalData(page: Page): Promise<void> {
   await page.route('https://wmts.terrascope.be/wmts?**', (route) =>
     route.fulfill({ status: 200, contentType: 'image/png', body: transparentPng, headers: corsHeaders }),
   );
+  await page.route('https://query.wikidata.org/sparql?**', (route) => {
+    const query = new URL(route.request().url()).searchParams.get('query') ?? '';
+    const bindings = query.includes('COUNT(DISTINCT ?item)')
+      ? [{ count: { type: 'literal', value: '1' } }]
+      : [{
+          item: { type: 'uri', value: 'http://www.wikidata.org/entity/Q123' },
+          itemLabel: { type: 'literal', value: 'Test museum' },
+          location: { type: 'literal', value: 'Point(16.38 48.21)' },
+          distance: { type: 'literal', value: '0.5' },
+        }];
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/sparql-results+json',
+      body: JSON.stringify({ head: { vars: [] }, results: { bindings } }),
+      headers: corsHeaders,
+    });
+  });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -70,7 +87,7 @@ test.beforeEach(async ({ page }) => {
 test('queries the materialized energy and Overpass layers through the real worker', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible();
-  await expect(page.getByText('17 of 17 query layers')).toBeVisible();
+  await expect(page.getByText('27 of 27 query layers')).toBeVisible();
 
   const canvas = page.locator('.maplibregl-canvas');
   await expect(canvas).toBeVisible();
@@ -201,21 +218,41 @@ test('filters the expanded query catalogue by layer name or domain', async ({ pa
   await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
   const filter = page.getByRole('searchbox', { name: 'Filter layers' });
 
-  await expect(page.getByText('17 of 17 query layers')).toBeVisible();
+  await expect(page.getByText('27 of 27 query layers')).toBeVisible();
   await filter.fill('transport');
-  await expect(page.getByText('2 of 17 query layers')).toBeVisible();
+  await expect(page.getByText('3 of 27 query layers')).toBeVisible();
   await expect(page.getByRole('button', { name: /Bicycle parking/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /EV charging stations/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /International airports \(Wikidata\)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Soil pH/ })).toHaveCount(0);
 
   await filter.fill('bookcase');
-  await expect(page.getByText('1 of 17 query layers')).toBeVisible();
+  await expect(page.getByText('1 of 27 query layers')).toBeVisible();
   const bookcase = page.getByRole('button', { name: /Public bookcases/ });
   await bookcase.click();
   await expect(page.locator('section.panel').filter({ hasText: 'Public bookcases' }).locator('.value')).toContainText('1');
 
   await filter.fill('no-such-layer');
   await expect(page.getByText('No layers match this filter.')).toBeVisible();
+});
+
+test('queries and maps a linked Wikidata layer through the SPARQL adapter', async ({ page }) => {
+  await page.goto('/');
+  const filter = page.getByRole('searchbox', { name: 'Filter layers' });
+  await filter.fill('Museums (Wikidata)');
+  await expect(page.getByText('1 of 27 query layers')).toBeVisible();
+
+  const museums = page.locator('section.panel').filter({ hasText: 'Museums (Wikidata)' });
+  await museums.getByRole('button', { name: /Museums \(Wikidata\)/ }).click();
+  await expect(museums.locator('.value').first()).toContainText('1');
+  await expect(museums.getByRole('link', { name: 'Test museum' })).toHaveAttribute(
+    'href',
+    'https://www.wikidata.org/wiki/Q123',
+  );
+  await expect(page.locator('.map-feature-summary')).toHaveText('1 map point · Museums (Wikidata)');
+
+  await museums.getByRole('button', { name: /area stats/ }).click();
+  await expect(museums.getByText('count', { exact: true })).toBeVisible();
 });
 
 test('stores and removes BYOK values without rendering the stored value', async ({ page }) => {

@@ -84,6 +84,7 @@ jobs:
               layers/grid_generation_mix.yaml
               "layers/osm_pois.yaml#osm_drinking_water"
               layers/soilgrids_ph.yaml
+              "layers/wikidata_places.yaml#wikidata_lighthouses"
               layers/worldcover_2021.yaml
             )
           fi

@@ -77,9 +77,9 @@
 
   const fmt = (v: number): string => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2).replace(/\.?0+$/, ''));
   const fmtSourceTime = (iso: string): string => `${iso.slice(0, 16).replace('T', ' ')} UTC`;
-  const featureName = (f: unknown): string => {
-    const p = (f as { properties?: Record<string, string> }).properties ?? {};
-    const label =
+  const featureDisplay = (f: unknown): { label: string; href?: string } => {
+    const p = (f as { properties?: Record<string, unknown> }).properties ?? {};
+    const label = String(
       p['name'] ??
       p['brand'] ??
       p['operator'] ??
@@ -87,9 +87,14 @@
       p['emergency'] ??
       p['military'] ??
       p['man_made'] ??
-      'feature';
-    const identity = [p['osm_type'], p['osm_id']].filter(Boolean).join(' ');
-    return identity ? `${label} (${identity})` : label;
+      'feature',
+    );
+    const identity = [p['osm_type'], p['osm_id']].filter(Boolean).map(String).join(' ');
+    const displayLabel = identity ? `${label} (${identity})` : label;
+    const href = typeof p['wikidata_url'] === 'string' && /^https:\/\/www\.wikidata\.org\/wiki\/Q\d+$/.test(p['wikidata_url'])
+      ? p['wikidata_url']
+      : undefined;
+    return href ? { label: displayLabel, href } : { label: displayLabel };
   };
 </script>
 
@@ -112,7 +117,10 @@
         <div class="value">{r.value.features.length}<span class="unit">found{r.value.truncated ? ' (list capped)' : ''}</span></div>
         <ul>
           {#each r.value.features.slice(0, 8) as f, i (i)}
-            <li>{featureName(f)}</li>
+            {@const display = featureDisplay(f)}
+            <li>
+              {#if display.href}<a href={display.href} target="_blank" rel="noreferrer">{display.label}</a>{:else}{display.label}{/if}
+            </li>
           {/each}
         </ul>
       </div>
@@ -260,6 +268,9 @@
     padding-left: 1.1rem;
     font-size: 0.85rem;
     color: #c4cad2;
+  }
+  .features a {
+    color: #9dc9f5;
   }
   .meta {
     display: flex;

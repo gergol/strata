@@ -1,0 +1,134 @@
+# M1.3 curated Wikidata geospatial pack. Each layer supplies only its semantic
+# WHERE-body constraint; the adapter injects bounded point/tile geography,
+# labels, limits, result shape, and exact tile counts.
+defaults:
+  adapter: bbox_vector
+  endpoint: https://query.wikidata.org/sparql
+  crs: EPSG:4326
+  modes: [point, tile]
+  zoom_valid: [8, 19]
+  value_type: feature
+  aggregation:
+    primary: count
+    secondary: [feature_list]
+  ttl: 7d
+  rate_limit:
+    group: wikidata-query-service
+    max_concurrent: 1
+    min_interval_ms: 1500
+  licence: CC0-1.0
+  commercial_use: true
+  attribution: Wikidata contributors
+  attribution_url: https://www.wikidata.org/wiki/Wikidata:Copyright
+  coverage: global
+  provenance_note: "Structured Wikidata statements using direct instance-of classifications; coordinates and completeness vary by place"
+  browser_access: direct
+  search_beyond_tile: true
+  params:
+    protocol: sparql
+    feature_cap: 100
+    label_language: en
+
+layers:
+  - id: wikidata_lighthouses
+    name: Lighthouses (Wikidata)
+    domain: built
+    health_assertion: { at: [-63.9155, 44.4939], expect_min_count: 1 }
+    params:
+      point_radius_km: 10
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q39715 .
+
+  - id: wikidata_castles
+    name: Castles (Wikidata)
+    domain: history
+    location_precision: exact
+    health_assertion: { at: [-3.2008, 55.9486], expect_min_count: 1 }
+    params:
+      point_radius_km: 5
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q23413 .
+
+  - id: wikidata_memorials
+    name: Memorials (Wikidata)
+    domain: history
+    location_precision: exact
+    health_assertion: { at: [16.3697, 48.2116], expect_min_count: 1 }
+    params:
+      point_radius_km: 1
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q5003624 .
+
+  - id: wikidata_museums
+    name: Museums (Wikidata)
+    domain: history
+    location_precision: exact
+    health_assertion: { at: [16.3618, 48.2038], expect_min_count: 1 }
+    params:
+      point_radius_km: 2
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q33506 .
+
+  - id: wikidata_universities
+    name: Universities (Wikidata)
+    domain: society
+    health_assertion: { at: [16.3601, 48.2132], expect_min_count: 1 }
+    params:
+      point_radius_km: 2
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q3918 .
+
+  - id: wikidata_stadiums
+    name: Stadiums (Wikidata)
+    domain: society
+    health_assertion: { at: [16.4209, 48.2073], expect_min_count: 1 }
+    params:
+      point_radius_km: 5
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q483110 .
+
+  - id: wikidata_coal_power_stations
+    name: Coal-fired power stations (Wikidata)
+    domain: energy
+    health_assertion: { at: [-0.1445, 51.4817], expect_min_count: 1 }
+    params:
+      point_radius_km: 10
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q6558431 .
+
+  - id: wikidata_nuclear_power_plants
+    name: Nuclear power plants (Wikidata)
+    domain: energy
+    health_assertion: { at: [15.884, 48.354], expect_min_count: 1 }
+    params:
+      point_radius_km: 30
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q134447 .
+
+  - id: wikidata_observatories
+    name: Observatories (Wikidata)
+    domain: sky
+    health_assertion: { at: [16.333, 48.232], expect_min_count: 1 }
+    params:
+      point_radius_km: 10
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q62832 .
+
+  - id: wikidata_international_airports
+    name: International airports (Wikidata)
+    domain: transport
+    health_assertion: { at: [16.5697, 48.1103], expect_min_count: 1 }
+    params:
+      point_radius_km: 15
+      sparql_query: |
+        {{spatial}}
+        ?item wdt:P31 wd:Q644371 .
