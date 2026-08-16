@@ -93,6 +93,15 @@ export class LocalQueryEngine implements QueryEngine {
           minZoom: d.overlay.min_zoom,
           maxZoom: d.overlay.max_zoom,
           opacity: d.overlay.opacity,
+          ...(d.overlay.time
+            ? {
+                time: {
+                  kind: d.overlay.time.kind,
+                  defaultOffsetDays: d.overlay.time.default_offset_days,
+                  maxAgeDays: d.overlay.time.max_age_days,
+                },
+              }
+            : {}),
           ...(d.overlay.legend
             ? {
                 legend: {
@@ -101,6 +110,16 @@ export class LocalQueryEngine implements QueryEngine {
                 },
               }
             : {}),
+        };
+      }
+      if (d.feature_style) {
+        summary.featureStyle = {
+          kind: d.feature_style.kind,
+          color: d.feature_style.color,
+          radius: d.feature_style.radius,
+          opacity: d.feature_style.opacity,
+          strokeColor: d.feature_style.stroke_color,
+          strokeWidth: d.feature_style.stroke_width,
         };
       }
       return summary;

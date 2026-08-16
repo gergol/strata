@@ -18,6 +18,11 @@ export interface RasterOverlaySummary {
   minZoom: number;
   maxZoom: number;
   opacity: number;
+  time?: {
+    kind: 'daily_utc';
+    defaultOffsetDays: number;
+    maxAgeDays: number;
+  };
   legend?: {
     title: string;
     items: Array<{ label: string; color: string }>;
@@ -37,6 +42,14 @@ export interface LayerSummary {
   provenance: string;
   /** Descriptor-driven M3 rendering metadata; absent for query-only layers. */
   overlay?: RasterOverlaySummary;
+  featureStyle?: {
+    kind: 'circle';
+    color: string;
+    radius: number;
+    opacity: number;
+    strokeColor: string;
+    strokeWidth: number;
+  };
   /** R8.3: surfaced whenever the layer's health assertion is failing. */
   degraded: boolean;
 }

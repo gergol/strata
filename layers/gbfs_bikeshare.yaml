@@ -20,6 +20,13 @@ defaults:
   provenance_note: "Live GBFS v2.3 station information joined to current station status; point results are nearest stations within 1.5 km and tile counts are exact for the feed snapshot"
   browser_access: direct
   search_beyond_tile: true
+  feature_style:
+    kind: circle
+    color: "#17b890"
+    radius: 7
+    opacity: 0.95
+    stroke_color: "#ffffff"
+    stroke_width: 1.5
   params:
     protocol: gbfs
     gbfs_language: en

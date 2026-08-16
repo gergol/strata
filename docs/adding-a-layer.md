@@ -29,6 +29,10 @@ Queryable `precomputed` layers use a small same-origin JSON record array and dec
 
 GBFS station layers use `adapter: bbox_vector`, `params.protocol: gbfs`, and the system's `gbfs.json` discovery URL. The adapter supports v2 language-keyed and v3 direct discovery, joins `station_information` to each fresh `station_status` snapshot, and normalizes both `num_bikes_available` and `num_vehicles_available`. Declare a bounded `coverage`, `point_radius_m`, `feature_cap`, and `search_beyond_tile: true`; the point list is nearest/capped while tile mode counts stations exactly for that feed snapshot.
 
+Raster overlays with a daily time dimension put `{date}` in every tile URL and declare `overlay.time: { kind: daily_utc, default_offset_days, max_age_days }`. The UI resolves the default UTC date, bounds a date picker, and rebuilds the source when it changes; browser health resolves the same default before fetching a real tile. `max_zoom` is the source's native tile ceiling—MapLibre may overzoom it rather than hiding the layer.
+
+Feature-valued point layers may declare a strict `feature_style` circle contract (colour, radius, opacity, stroke). This style travels through `LayerSummary` and controls the actual MapLibre result overlay; the domain colour is only a fallback.
+
 Overlay mode is a rendering contract independent of the analytical adapter. A raster overlay declares one or more XYZ/WMTS/WMS tile templates, tile size, zoom bounds, default opacity, and an optional structured legend. The client understands `{z}`, `{x}`, `{y}`, and MapLibre's `{bbox-epsg-3857}` token. Keep visual and analytical semantics separate: a rendered WMS PNG can be an overlay for a COG-backed layer, but it cannot replace numeric point values or tile statistics.
 
 A source that exposes only rendered tiles uses `modes: [overlay]`, the `precomputed` adapter classification, and `health_assertion.expect_overlay: true`. It appears only in map controls, never in the point-result stack. Its health canary expands and fetches a real tile at `health_assertion.at`; do not add a synthetic point assertion to make the generic runner happy.

@@ -171,4 +171,25 @@ describe('browser access verification', () => {
     );
     expect(checked.note).toContain('overlay tile browser probe failed');
   });
+
+  it('resolves a daily overlay date before probing the rendered tile', () => {
+    const daily = parseDescriptor({
+      ...JSON.parse(JSON.stringify(base)),
+      adapter: 'precomputed',
+      modes: ['overlay'],
+      health_assertion: { at: [14.5, 47.5], expect_overlay: true },
+      browser_access: 'direct',
+      params: undefined,
+      overlay: {
+        kind: 'raster',
+        tiles: ['https://tiles.test/{date}/{z}/{y}/{x}.jpg'],
+        min_zoom: 1,
+        max_zoom: 9,
+        time: { kind: 'daily_utc', default_offset_days: -2, max_age_days: 30 },
+      },
+    });
+    const url = overlayProbeUrl(daily, () => Date.parse('2026-08-16T12:00:00Z'));
+    expect(url).toContain('/2026-08-14/');
+    expect(url).not.toContain('{date}');
+  });
 });

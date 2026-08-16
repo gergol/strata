@@ -26,7 +26,7 @@
   let map: maplibregl.Map | undefined;
   let targetMarker: maplibregl.Marker | undefined;
   let locationRequestId = 0;
-  const activeRasterOverlays = new Map<string, { layer: LayerSummary; opacity: number }>();
+  const activeRasterOverlays = new Map<string, { layer: LayerSummary; opacity: number; date?: string }>();
   const overlayLayers = $derived(
     layers.filter((layer): layer is LayerSummary & { overlay: NonNullable<LayerSummary['overlay']> } => layer.overlay !== undefined),
   );
@@ -81,16 +81,19 @@
       return;
     }
     currentMap.addSource(ids.source, { type: 'geojson', data });
+    const style = overlay.layer.featureStyle;
     currentMap.addLayer({
       id: ids.circles,
       type: 'circle',
       source: ids.source,
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 8],
-        'circle-color': DOMAIN_COLORS[overlay.layer.domain] ?? '#35a7ff',
-        'circle-opacity': 0.9,
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 1.5,
+        'circle-radius': style
+          ? ['interpolate', ['linear'], ['zoom'], 10, Math.max(2, style.radius * 0.65), 16, style.radius]
+          : ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 8],
+        'circle-color': style?.color ?? DOMAIN_COLORS[overlay.layer.domain] ?? '#35a7ff',
+        'circle-opacity': style?.opacity ?? 0.9,
+        'circle-stroke-color': style?.strokeColor ?? '#ffffff',
+        'circle-stroke-width': style?.strokeWidth ?? 1.5,
       },
     });
   }
@@ -112,7 +115,7 @@
       [layer.id]: {
         name: layer.name,
         count: features.length,
-        color: DOMAIN_COLORS[layer.domain] ?? '#35a7ff',
+        color: layer.featureStyle?.color ?? DOMAIN_COLORS[layer.domain] ?? '#35a7ff',
       },
     };
   }
@@ -143,10 +146,11 @@
       return;
     }
     const spec = active.layer.overlay;
+    const tiles = spec.tiles.map((tile) => tile.replaceAll('{date}', active.date ?? ''));
     if (!currentMap.getSource(ids.source)) {
       currentMap.addSource(ids.source, {
         type: 'raster',
-        tiles: spec.tiles,
+        tiles,
         tileSize: spec.tileSize,
         minzoom: spec.minZoom,
         maxzoom: spec.maxZoom,
@@ -161,7 +165,9 @@
           type: 'raster',
           source: ids.source,
           minzoom: spec.minZoom,
-          maxzoom: spec.maxZoom + 1,
+          // Raster sources can be overzoomed beyond their native maximum;
+          // maxZoom describes available source tiles, not where the overlay disappears.
+          maxzoom: 23,
           paint: { 'raster-opacity': active.opacity },
         },
         before,
@@ -171,10 +177,16 @@
     }
   }
 
-  function setRasterOverlay(layer: LayerSummary, enabled: boolean, opacity: number): void {
+  function setRasterOverlay(layer: LayerSummary, enabled: boolean, opacity: number, date?: string): void {
     if (!layer.overlay) return;
-    if (enabled) activeRasterOverlays.set(layer.id, { layer, opacity });
+    const previous = activeRasterOverlays.get(layer.id);
+    if (enabled) activeRasterOverlays.set(layer.id, { layer, opacity, ...(date ? { date } : {}) });
     else activeRasterOverlays.delete(layer.id);
+    if (enabled && previous?.date !== date && map?.isStyleLoaded()) {
+      const ids = rasterOverlayIds(layer.id);
+      if (map.getLayer(ids.raster)) map.removeLayer(ids.raster);
+      if (map.getSource(ids.source)) map.removeSource(ids.source);
+    }
     syncRasterOverlay(layer.id);
   }
 

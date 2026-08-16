@@ -6,25 +6,34 @@
     onChange,
   }: {
     layer: LayerSummary & { overlay: NonNullable<LayerSummary['overlay']> };
-    onChange: (layer: LayerSummary, enabled: boolean, opacity: number) => void;
+    onChange: (layer: LayerSummary, enabled: boolean, opacity: number, date?: string) => void;
   } = $props();
 
   const overlay = $derived(layer.overlay);
   let enabled = $state(false);
   let opacity = $state(0.65);
+  const utcDate = (offsetDays: number): string => new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+  let date = $state('');
 
   $effect(() => {
     if (!enabled) opacity = overlay.opacity;
+    if (overlay.time && !date) date = utcDate(overlay.time.defaultOffsetDays);
+    if (!overlay.time && date) date = '';
   });
 
   function toggle(event: Event): void {
     enabled = (event.currentTarget as HTMLInputElement).checked;
-    onChange(layer, enabled, opacity);
+    onChange(layer, enabled, opacity, date || undefined);
   }
 
   function changeOpacity(event: Event): void {
     opacity = Number((event.currentTarget as HTMLInputElement).value);
-    onChange(layer, enabled, opacity);
+    onChange(layer, enabled, opacity, date || undefined);
+  }
+
+  function changeDate(event: Event): void {
+    date = (event.currentTarget as HTMLInputElement).value;
+    onChange(layer, enabled, opacity, date);
   }
 </script>
 
@@ -47,6 +56,20 @@
         oninput={changeOpacity}
       />
     </label>
+
+    {#if overlay.time}
+      <label class="date">
+        <span>Imagery date</span>
+        <input
+          type="date"
+          min={utcDate(-overlay.time.maxAgeDays)}
+          max={utcDate(0)}
+          value={date}
+          aria-label={`${layer.name} imagery date`}
+          onchange={changeDate}
+        />
+      </label>
+    {/if}
 
     {#if overlay.legend}
       <div class="legend" aria-label={`${layer.name} legend`}>
@@ -96,6 +119,22 @@
     margin-top: 0.55rem;
     color: #9aa3ad;
     font-size: 0.75rem;
+  }
+  .date {
+    display: grid;
+    gap: 0.2rem;
+    margin-top: 0.55rem;
+    color: #9aa3ad;
+    font-size: 0.75rem;
+  }
+  .date input {
+    width: 100%;
+    box-sizing: border-box;
+    color: #d7dce2;
+    background: #11151a;
+    border: 1px solid #3b4653;
+    border-radius: 4px;
+    padding: 0.25rem;
   }
   .opacity span {
     display: flex;

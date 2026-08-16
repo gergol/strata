@@ -1,0 +1,62 @@
+defaults:
+  adapter: precomputed
+  crs: EPSG:3857
+  modes: [overlay]
+  zoom_valid: [0, 22]
+  value_type: feature
+  ttl: 1d
+  rate_limit:
+    max_concurrent: 4
+    min_interval_ms: 0
+  commercial_use: true
+  search_beyond_tile: false
+  browser_access: direct
+
+layers:
+  - id: nasa_gibs_modis_terra_true_color
+    name: NASA MODIS Terra true color
+    domain: environment
+    endpoint: https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/
+    licence: "NASA EOSDIS Data and Information Policy"
+    attribution: "NASA EOSDIS GIBS — MODIS Terra"
+    attribution_url: https://www.earthdata.nasa.gov/eosdis/science-system-description/eosdis-components/gibs
+    health_assertion:
+      at: [16.3738, 48.2082]
+      expect_overlay: true
+    coverage: global
+    provenance_note: "Near-real-time MODIS Terra corrected-reflectance true-color imagery rendered by NASA GIBS; selectable UTC acquisition day, defaulting two days behind today to avoid partial ingest"
+    overlay:
+      kind: raster
+      tiles:
+        - "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/{date}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg"
+      tile_size: 256
+      min_zoom: 1
+      max_zoom: 9
+      opacity: 1
+      time:
+        kind: daily_utc
+        default_offset_days: -2
+        max_age_days: 30
+
+  - id: vienna_aerial_1971
+    name: Vienna aerial imagery (1971)
+    domain: history
+    endpoint: https://mapsneu.wien.gv.at/wmtsneu/1.0.0/WMTSCapabilities.xml
+    licence: CC-BY-4.0
+    attribution: "Stadt Wien — data.wien.gv.at"
+    attribution_url: https://www.data.gv.at/katalog/dataset/luftbildplan-1971-wien
+    health_assertion:
+      at: [16.3738, 48.2082]
+      expect_overlay: true
+    coverage:
+      bbox: [16.18218, 48.117668, 16.577511, 48.322571]
+    location_precision: exact
+    provenance_note: "Orthorectified 25 cm black-and-white aerial photographs covering Vienna, acquired 14 and 16 May 1971 and published as the official City of Vienna WMTS"
+    overlay:
+      kind: raster
+      tiles:
+        - "https://mapsneu.wien.gv.at/wmts/lb/farbe/google3857/{z}/{y}/{x}.jpeg"
+      tile_size: 256
+      min_zoom: 0
+      max_zoom: 20
+      opacity: 0.75

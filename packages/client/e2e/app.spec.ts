@@ -85,6 +85,12 @@ async function mockExternalData(page: Page): Promise<void> {
   await page.route('https://wmts.terrascope.be/wmts?**', (route) =>
     route.fulfill({ status: 200, contentType: 'image/png', body: transparentPng, headers: corsHeaders }),
   );
+  await page.route('https://gibs.earthdata.nasa.gov/wmts/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/jpeg', body: transparentPng, headers: corsHeaders }),
+  );
+  await page.route('https://mapsneu.wien.gv.at/wmts/lb/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/jpeg', body: transparentPng, headers: corsHeaders }),
+  );
   await page.route('https://query.wikidata.org/sparql?**', (route) => {
     const query = new URL(route.request().url()).searchParams.get('query') ?? '';
     const bindings = query.includes('COUNT(DISTINCT ?item)')
@@ -315,6 +321,26 @@ test('renders a descriptor-driven raster overlay with opacity and legend control
   await expect(controls.getByLabel('WorldCover 2021 (visual) legend')).toBeVisible();
   await expect(controls.getByText('Built-up')).toBeVisible();
 
+  const gibsToggle = controls.getByRole('checkbox', { name: 'NASA MODIS Terra true color' });
+  const gibsRequest = page.waitForRequest((request) =>
+    request.url().startsWith('https://gibs.earthdata.nasa.gov/wmts/') && /\/20\d\d-\d\d-\d\d\//.test(request.url()),
+  );
+  await gibsToggle.check();
+  const datedTile = await gibsRequest;
+  expect(datedTile.url()).not.toContain('{date}');
+  const dateInput = controls.getByLabel('NASA MODIS Terra true color imagery date');
+  await expect(dateInput).toBeVisible();
+  const changedDateRequest = page.waitForRequest((request) => request.url().includes('/2026-08-10/'));
+  await dateInput.fill('2026-08-10');
+  await changedDateRequest;
+
+  const historicalToggle = controls.getByRole('checkbox', { name: 'Vienna aerial imagery (1971)' });
+  const historicalRequest = page.waitForRequest((request) =>
+    request.url().startsWith('https://mapsneu.wien.gv.at/wmts/lb/farbe/google3857/'),
+  );
+  await historicalToggle.check();
+  expect((await historicalRequest).url()).toMatch(/\/\d+\/\d+\/\d+\.jpeg$/);
+
   await page.locator('.maplibregl-canvas').click({ position: { x: 250, y: 250 } });
   await expect(page.locator('section.panel').filter({ hasText: 'WorldCover 2021' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Soil pH/ })).toBeVisible();
@@ -402,6 +428,7 @@ test('discovers a GBFS feed and maps joined live station availability', async ({
   await expect(panel.getByText('Stephansplatz U — 9 available · 21 docks')).toBeVisible();
   await expect(panel.getByText('nearest — searched around the point')).toBeVisible();
   await expect(page.locator('.map-feature-summary')).toHaveText('1 map point · WienMobil Rad availability');
+  await expect(page.locator('.map-feature-summary i')).toHaveCSS('background-color', 'rgb(23, 184, 144)');
 });
 
 test('queries a zoom-gated cadastral layer through GetCapabilities-driven WFS', async ({ page }) => {

@@ -47,12 +47,16 @@ function tileMercatorBBox(tile: Tile): string {
   ].join(',');
 }
 
-export function overlayProbeUrl(layer: LayerDescriptor): string {
+export function overlayProbeUrl(layer: LayerDescriptor, now: () => number = Date.now): string {
   const overlay = layer.overlay;
   if (!overlay) throw new Error(`layer '${layer.id}' has no overlay rendering contract`);
   const zoom = Math.min(overlay.max_zoom, Math.max(overlay.min_zoom, 12));
   const tile = lonLatToTile(layer.health_assertion.at, zoom);
+  const date = new Date(now() + (overlay.time?.default_offset_days ?? 0) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
   return overlay.tiles[0]
+    .replaceAll('{date}', date)
     .replaceAll('{z}', String(tile.z))
     .replaceAll('{x}', String(tile.x))
     .replaceAll('{y}', String(tile.y))

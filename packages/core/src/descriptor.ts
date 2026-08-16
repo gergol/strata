@@ -122,6 +122,14 @@ const overlayLegendItemSchema = z
   })
   .strict();
 
+const rasterOverlayTimeSchema = z
+  .object({
+    kind: z.literal('daily_utc'),
+    default_offset_days: z.number().int().min(-30).max(0).default(-1),
+    max_age_days: z.number().int().min(1).max(366).default(30),
+  })
+  .strict();
+
 const rasterOverlaySchema = z
   .object({
     kind: z.literal('raster'),
@@ -130,6 +138,7 @@ const rasterOverlaySchema = z
     min_zoom: z.number().int().min(0).max(22),
     max_zoom: z.number().int().min(0).max(22),
     opacity: z.number().min(0).max(1).default(0.65),
+    time: rasterOverlayTimeSchema.optional(),
     legend: z
       .object({
         title: z.string().min(1),
@@ -147,7 +156,33 @@ const rasterOverlaySchema = z
         message: `overlay min_zoom must not exceed max_zoom (${overlay.min_zoom} > ${overlay.max_zoom})`,
       });
     }
+    const dateTemplates = overlay.tiles.filter((tile) => tile.includes('{date}'));
+    if (overlay.time && dateTemplates.length !== overlay.tiles.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tiles'],
+        message: 'every tile URL for a daily overlay must contain the {date} placeholder',
+      });
+    }
+    if (!overlay.time && dateTemplates.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['time'],
+        message: 'tile URLs using {date} must declare an overlay time contract',
+      });
+    }
   });
+
+const featureStyleSchema = z
+  .object({
+    kind: z.literal('circle'),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    radius: z.number().min(2).max(16).default(6),
+    opacity: z.number().min(0).max(1).default(0.9),
+    stroke_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#ffffff'),
+    stroke_width: z.number().min(0).max(5).default(1.5),
+  })
+  .strict();
 
 export const layerDescriptorSchema = z
   .object({
@@ -186,6 +221,8 @@ export const layerDescriptorSchema = z
     search_beyond_tile: z.boolean().default(false),
     /** M3 rendering contract. Kept independent of the analytical adapter. */
     overlay: rasterOverlaySchema.optional(),
+    /** Descriptor-driven styling for vector features returned by point queries. */
+    feature_style: featureStyleSchema.optional(),
     /** Adapter-specific configuration (e.g. an Overpass QL template). Validated by the adapter. */
     params: z.record(z.unknown()).optional(),
   })
@@ -262,6 +299,13 @@ export const layerDescriptorSchema = z
         code: z.ZodIssueCode.custom,
         path: ['modes'],
         message: 'a declared overlay rendering contract requires overlay mode',
+      });
+    }
+    if (d.feature_style && (d.value_type !== 'feature' || !d.modes.includes('point'))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['feature_style'],
+        message: 'feature_style requires a feature-valued point-query layer',
       });
     }
     const hasQueryMode = d.modes.includes('point') || d.modes.includes('tile');
