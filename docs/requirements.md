@@ -289,3 +289,6 @@ Before a layer is considered done:
 - [ ] All three empty states verified to render distinguishably
 - [ ] Coverage extent recorded, so "no coverage" is truthful
 - [ ] Modelled-vs-measured noted in `provenance_note`
+- [ ] `browser_access` declared; the real Pages origin passes CORS (and `Range` for COG) or the materialize/drop decision is recorded
+- [ ] Live browser-access verification passes, not only a Node request
+- [ ] The operational steps in `docs/adding-a-layer.md` pass

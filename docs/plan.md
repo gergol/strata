@@ -1,8 +1,9 @@
 # Strata — Technical Plan
-**Status:** v0.3, in effect (companion to [requirements.md](requirements.md) draft v0.2.1)
-**Date:** 2026-08-08
+**Status:** v0.4, in effect (companion to [requirements.md](requirements.md) draft v0.2.1)
+**Date:** 2026-08-16
 **Changed in v0.2:** architecture revised from thin-server-proxy to client-only after re-examination (see §1 and decisions.md D1); Phases 1–4 detailed (§8); requirements deviations forced by client-only recorded (§5).
 **Changed in v0.3:** decisions D1–D9 accepted by the author; D1 carries a rider — keep a later proxy switch contained — implemented as §4.5.
+**Changed in v0.4:** Phase 0 hardening records browser-aware health, the Energy-Charts materialization, PWA/BYOK/browser regression gates, and the explicit WorldCover capability gap (§6.2).
 
 This document turns the requirements into buildable decisions: architecture shape, stack, repository layout, core contracts, and a work breakdown for all phases. Positions on the open decisions of requirements §12 live in [decisions.md](decisions.md); this plan assumes the recommendations there and must be revised if they change.
 
@@ -10,7 +11,7 @@ This document turns the requirements into buildable decisions: architecture shap
 
 ## 1. Architecture shape: client-only
 
-**Strata is a static web app. There is no server and no database.** Everything Strata runs is either JavaScript in the browser or a scheduled GitHub Actions workflow; everything Strata stores is either in the browser (IndexedDB, localStorage) or committed to this repository. Hosting is any static host (GitHub Pages by default). The app is a PWA, which is also most of the offline story (D6).
+**Strata is a static web app. There is no server and no database.** Everything Strata runs is either JavaScript in the browser or a scheduled GitHub Actions workflow; durable state lives in the browser (IndexedDB, localStorage), the repository (health history), or the immutable Pages deployment artifact (refreshed materializations). Hosting is GitHub Pages by default. The app is a PWA, which is also most of the offline story (D6).
 
 ```mermaid
 flowchart LR
@@ -45,7 +46,7 @@ Plan v0.1 recommended a thin server proxy, on four arguments. Re-examined for a 
 | Proxy argument | Client-only answer |
 |---|---|
 | Central rate limiting across tabs (R7.3) | The limiter lives in the query engine worker; the Web Locks API coordinates the rare second tab. One person clicking one map is the load model — the 30-layer fan-out hazard is already contained by lazy fetch (R7.1) and debounce (R7.4), which are client-side anyway. |
-| Scheduled health checks with nobody watching (R8.2) | A **GitHub Actions cron workflow** runs the same isomorphic core (descriptor loader → query pipeline → assertion) in Node and commits `status.json` plus an append-only history file to the repo. R8.5's "when did this break" history comes free from git. The client reads the committed status and additionally re-checks opportunistically at launch. |
+| Scheduled health checks with nobody watching (R8.2) | A **GitHub Actions cron workflow** runs the same isomorphic core (descriptor loader → query pipeline → assertion) in Node, verifies browser CORS/Range/freshness separately, and commits `status.json` plus an append-only history file to the repo. R8.5's "when did this break" history comes free from git. The client reads the committed status and active queries still surface their own failures. |
 | API keys can't ship in a client bundle | Keys don't ship — **bring-your-own-key**: the operator pastes their free personal keys (FIRMS, eBird, ENTSO-E, OpenCellID, aisstream) into a settings panel once; they live in localStorage. The Actions health runner uses repo secrets for the same layers. For a personal instrument this is cleaner than hiding shared keys behind a proxy. |
 | CORS | The one real casualty — see §1.2. Not all upstreams allow browser access, and no client-side cleverness changes that. |
 
@@ -62,7 +63,7 @@ What the client-only shape buys in exchange: zero hosting cost, zero operations,
 
 ### 1.3 The materializer pattern
 
-A scheduled GitHub Actions workflow that fetches an upstream source, transforms it, and commits the result as a static asset (JSON, FlatGeobuf, or PMTiles) served by Pages. This converts sources that are CORS-blocked, slow, bulk-download-only, or impolite to hammer into **A6 precomputed layers** — and it reuses the same adapter code the client runs, since `packages/core` is isomorphic. Candidates: city tree cadastres (yearly), IACS crop parcels (yearly), UK/FR property transactions (monthly bulk CSVs), Pleiades/DARE gazetteers (rarely), Ookla (quarterly), region packs themselves. The derivation provenance rule (R9.2) applies: the workflow stamps inputs and date into the asset's descriptor `provenance_note`.
+A scheduled GitHub Actions workflow that fetches an upstream source, validates/transforms it, and publishes the result as a static Pages asset (JSON, FlatGeobuf, or PMTiles). Frequently refreshed small assets can live only in the immutable deployment artifact; durable or large derived products can be committed or attached to Releases. This converts sources that are CORS-blocked, slow, bulk-download-only, or impolite to hammer into browser-safe materialized inputs — and it reuses the same adapter code the client runs, since `packages/core` is isomorphic. The first production use is Energy-Charts: an hourly versioned JSON envelope with explicit materialized/source timestamps. Later candidates: city tree cadastres (yearly), IACS crop parcels (yearly), UK/FR property transactions (monthly bulk CSVs), Pleiades/DARE gazetteers (rarely), Ookla (quarterly), region packs themselves. The derivation provenance rule (R9.2) applies.
 
 This is the second job Actions does (health checks being the first). Both are "server-shaped work without a server": scheduled, unattended, versioned, free at this scale.
 
@@ -167,7 +168,7 @@ The cache key includes the descriptor hash, so editing a descriptor invalidates 
 
 ### 4.4 Health runner (GitHub Actions)
 
-Cron workflow (6-hourly to start) in `packages/runner`: load all descriptors, run each `health_assertion` through the same pipeline with Node IO (cache bypassed, secrets-supplied keys, proper User-Agent — the runner *can* set one), write `data/status/status.json` and append to history, commit. The client fetches the committed status at launch, shows degraded badges (R8.3), and opportunistically re-checks layers it is actively using. R8.1–R8.3, R8.5 satisfied with zero servers; R8.2 satisfied in amended form (§5).
+Cron workflow (6-hourly to start) in `packages/runner`: load all descriptors, run each `health_assertion` through the same pipeline with Node IO (cache bypassed, secrets-supplied keys, proper User-Agent — the runner *can* set one), then separately verify the browser contract: CORS on every cross-origin dependency, HTTP range support for COGs, and freshness/same-origin placement for materializations. Write `data/status/status.json`, append to history, and commit. The client fetches the committed status at launch and shows degraded badges (R8.3); active queries surface current failures directly. R8.1–R8.3, R8.5 satisfied with zero servers; R8.2 satisfied in amended form (§5).
 
 ### 4.5 Location transparency — the proxy switch, kept containable
 
@@ -190,11 +191,11 @@ Client-only makes three requirements unsatisfiable as written. Rather than silen
 | R7.3 | Concurrency caps enforced centrally | "Centrally" becomes "in the single query-engine worker, coordinated across tabs via Web Locks". Same guarantee for a single operator. |
 | §13 checklist | — | **Add:** "CORS (and `Range`, for COG) verified from a browser context; if blocked, the materialize-vs-drop decision is recorded in the descriptor". Suggested descriptor field: `browser_access: direct | materialized | blocked`. |
 | §6 descriptor | `unit` is the native unit ("pH*10") | **Redefined:** `unit` is the post-scaling *display* unit carried into every result; optional `native_unit` documents the upstream's raw unit. Schema v1 additionally requires `value_type` (numeric/categorical/feature — it decides whether R6.3 or R4.3 binds) and adds optional `nodata`, `search_beyond_tile` (R4.4), and `params`. Requirements §6 example updated in v0.2.1. |
-| §11 Phase 0 | A3 probe layer is ENTSO-E | **Substituted Energy-Charts** — same A3 shape (bidding-zone region lookup), but browser-reachable; raw ENTSO-E is not CORS-accessible and needs a token, and moves behind the materializer if ever needed. |
+| §11 Phase 0 | A3 probe layer is ENTSO-E | **Substituted Energy-Charts** — same A3 shape (bidding-zone region lookup). Its API later restricted CORS, so Actions now materializes a validated hourly same-origin snapshot. Raw ENTSO-E remains token-gated and CORS-blocked. |
 
 ## 6. Phase 0 work breakdown
 
-Goal unchanged: force the descriptor and adapter contracts honest against three deliberately different layers — **Overpass (A1), SoilGrids pH (A2), electricity generation mix via Energy-Charts (A3)** (Energy-Charts is browser-reachable; raw ENTSO-E is not and moves behind the materializer if ever needed). Milestones sequential, acceptance criteria tied to requirement numbers.
+Goal unchanged: force the descriptor and adapter contracts honest against three deliberately different layers — **Overpass (A1), SoilGrids pH (A2), electricity generation mix via Energy-Charts (A3)**. Energy-Charts is consumed through the materializer because its API does not grant CORS to Pages; raw ENTSO-E remains token-gated and CORS-blocked. Milestones sequential, acceptance criteria tied to requirement numbers.
 
 **M0.1 — Contracts package.** Zod descriptor schema with mandatory-field validation; envelope types; tile math; unit scaling; the `IO` seam.
 *Accept:* descriptor missing `licence`/`attribution`/`unit`/`scale_factor` fails load with a precise error (R6.2, R6.3); unknown `crs` fails hard (R8.4). Unit tests only, no I/O.
@@ -208,7 +209,7 @@ Goal unchanged: force the descriptor and adapter contracts honest against three 
 **M0.4 — Overpass (A1).** BBOX vector adapter with Overpass QL templating from the descriptor, capped feature lists, count/density aggregation. Politeness stress test: the limiter must demonstrably protect Overpass; development runs against recorded fixtures, live hits only in health assertions and manual checks.
 *Accept:* a POI descriptor (drinking fountains) works in M1 and M2 modes; an open-ocean query returns `empty` — not `no_coverage`, not `error` (R5.3).
 
-**M0.5 — Energy-Charts (A3).** Region-lookup adapter: point → bidding-zone polygon from `regions/` → fetch by zone ID. First layer where the "tile" answer is a region answer; envelope carries which region answered.
+**M0.5 — Energy-Charts (A3).** Region-lookup adapter: point → bidding-zone polygon from `regions/` → fetch a validated same-origin materialization by zone ID. First layer where the "tile" answer is a region answer; envelope carries the region and upstream source timestamp.
 *Accept:* clicking anywhere in Austria returns the current AT generation mix; clicking mid-Atlantic returns `no_coverage`, correctly distinct from M0.4's `empty`.
 
 **M0.6 — Health runner.** `packages/runner` + cron workflow + committed status/history + client degraded badges.
@@ -221,7 +222,7 @@ Goal unchanged: force the descriptor and adapter contracts honest against three 
 **M0.8 — Exit review.** Re-read requirements §6 against what M0.3–M0.5 actually required; bespoke code becomes descriptor fields or named adapter capabilities. Freeze descriptor schema v1; write `docs/adding-a-layer.md` (§13 operationalised, CORS item included).
 *Exit test:* adding a fourth layer (WorldCover — exercises A2's categorical path) touches only `layers/` and takes under an hour including checklist.
 
-**Explicitly not in Phase 0:** M3 overlays beyond a stub, A4/A5/A6 adapters, materializers, offline/PWA polish beyond the default service worker, any second layer per adapter beyond the exit dry-run.
+**Explicitly not in Phase 0:** M3 overlays beyond a stub, A4/A5/A6 adapters, general-purpose materializer recipes beyond the Energy-Charts CORS exception, offline region packs beyond the app shell/result cache, any second layer per adapter beyond the exit dry-run.
 
 ### 6.1 Phase 0 exit review (M0.8, 2026-08-09)
 
@@ -233,6 +234,18 @@ M0.1–M0.7 are complete; all three probe layers are live-verified through the v
 4. **Descriptor schema v1 is frozen** as of this review; future additions are additive, and descriptor-hash cache keys protect against silent shape drift.
 5. **Deviation to record:** health checks run only in Actions (R8.2 as amended); the browser reads the committed status for degraded badges and does not run assertions itself.
 
+### 6.2 Phase 0 hardening closure (2026-08-16)
+
+The live browser exposed a boundary the Node health runner could not see: Energy-Charts returned data to Node while denying the Pages origin via CORS. Phase 0 was hardened before Phase 1 entry:
+
+1. Energy-Charts now publishes through an hourly same-origin Pages materialization. The producer validates provider schema and source age, writes atomically, and preserves the previous deployment on failure. Results expose the upstream timestamp.
+2. Health status is green only when the live assertion **and** browser boundary pass. Cross-origin dependencies require a matching CORS header; COGs require HTTP 206 range reads; materialized assets require a same-origin URL and bounded age.
+3. The PWA app shell and bounded runtime caches are implemented and covered by an offline browser reload test. BYOK values can be saved/removed in localStorage without rendering stored secrets.
+4. CI now runs deterministic worker/UI, mobile, BYOK, accessibility-state, and offline tests. Bundle budgets keep the application entry separate from MapLibre and the query worker.
+5. `docs/adding-a-layer.md` operationalises the per-layer checklist. The WorldCover VRT still requires multi-file COG selection or a materialized mosaic; that failed descriptor-only dry run is retained as the first named Phase 1 capability rather than reported as a Phase 0 success.
+
+**Phase 1 entry state:** three browser-functional probe layers, no known Phase 0 correctness blocker, and one explicit capability gap (multi-file categorical COGs) queued for Phase 1.
+
 ## 7. Phase 0 risks
 
 | Risk | Mitigation |
@@ -241,7 +254,7 @@ M0.1–M0.7 are complete; all three probe layers are live-verified through the v
 | CORS reality across the wider catalogue is worse than expected | Accepted as discoverable-per-layer; §13 CORS item + `browser_access` field make the ledger explicit. The materializer converts the slow-changing majority of blocked sources; the shim remains for live ones. |
 | Overpass politeness mistakes during development | Fixture-first development; conservative descriptor limits from day one; live hits only via health runner and manual checks. |
 | IndexedDB cache eviction under storage pressure | It's a cache — correctness never depends on it. `navigator.storage.persist()` requested for the offline path later. |
-| Actions cron unreliability (delayed/skipped runs) | Acceptable for 6-hourly health checks; client-side opportunistic checks cover the gap. Not a correctness dependency. |
+| Actions cron unreliability (delayed/skipped runs) | Acceptable for 6-hourly health checks; active client queries expose failures and materialized assets have explicit age limits. Not a correctness dependency. |
 | Descriptor schema churn after more layers land | Accepted — schema freezes only at M0.8; descriptor-hash cache keys mean churn can't serve stale shapes. |
 | Scope creep toward pretty rendering | M0.7 is deliberately ugly. Overlay work is Phase 1. |
 
@@ -257,7 +270,7 @@ Phasing follows requirements §11; this section adds the milestone-level detail.
 - **M1.3 — Wikidata SPARQL.** Query-template descriptor field with geo-injection; ~10 descriptors (lighthouses, castles, power stations, memorials, decommissioned reactors…). Widest breadth per line of configuration in the catalogue.
 - **M1.4 — Generic WFS/INSPIRE client.** GetCapabilities-driven A1 subtype; per-service CORS verdicts recorded via `browser_access`; blocked-but-valuable services routed to the materializer. Targets: Natura 2000, one national cadastre (zoom-gated hard, R5.1), one flood-hazard WFS. *This is the leverage bet of the whole plan — dozens of services become descriptor work.*
 - **M1.5 — A4 point-sample adapter.** Open-Meteo forecast + air-quality/pollen descriptors. Envelope `basis: 'sampled'` rendering lands here (the A4 UI rule).
-- **M1.6 — A6 precomputed adapter + first materializations.** Ookla quadkey join; Kontur/GISCO population as PMTiles; the materializer workflow pattern (§1.3) built and documented here.
+- **M1.6 — A6 precomputed adapter + general materializations.** Ookla quadkey join; Kontur/GISCO population as PMTiles; generalize the small Energy-Charts materializer into documented bulk/static recipes.
 - **M1.7 — GBFS.** One spec, hundreds of cities.
 - **M1.8 — GIBS + historical basemaps.** NRT satellite imagery WMTS; first historical map overlay if a browser-reachable WMTS exists (prep for Phase 2's compare slider).
 

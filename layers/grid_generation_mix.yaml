@@ -26,7 +26,7 @@ health_assertion:
   expect_status: ok
 coverage:
   regions: [at]
-provenance_note: "Live public net electricity generation for the bidding zone, via Energy-Charts (Fraunhofer ISE) aggregating official ENTSO-E/SMARD data; shares of current generation, not consumption"
+provenance_note: "Hourly materialized public net electricity generation for the bidding zone, sourced from Energy-Charts (Fraunhofer ISE) aggregating official ENTSO-E/SMARD data; source timestamp is shown; shares are generation, not consumption"
 browser_access: materialized
 params:
   regions_url: https://raw.githubusercontent.com/gergol/strata/main/regions/bidding-zones.json

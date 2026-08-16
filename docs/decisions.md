@@ -38,7 +38,7 @@ Numbered to match requirements §12. Each entry records the position the [techni
 
 ## D6 — Offline: a natural consequence, phased deliberately
 
-**Position: the PWA architecture makes offline a gradient, not a feature to bolt on — but it is still built in stages, not in Phase 0.** Stage 1 (free with D1): app shell and cached results work offline via service worker + IndexedDB. Stage 2 (Phase 2): "region pack" pre-localisation — download COG windows, PMTiles, and region packs for an area before a trip; descriptor `endpoint` is just a URL, so local/self-hosted assets need no code changes. Stage 3 (only if field use demands): offline handling for A1/A3 live layers, which degrades to cached-with-age-labels. The standing constraint from v1 remains: no CDN-only dependencies, all assets self-containable.
+**Position: the PWA architecture makes offline a gradient, not a feature to bolt on.** Stage 1 is complete as of 2026-08-16: the app shell is precached by a service worker, result envelopes remain in IndexedDB, selected static/repository assets use bounded runtime caches, and an automated browser test proves offline reload. Stage 2 (Phase 2): "region pack" pre-localisation — download COG windows, PMTiles, and region packs for an area before a trip; descriptor `endpoint` is just a URL, so local/self-hosted assets need no code changes. Stage 3 (only if field use demands): offline handling for A1/A3 live layers, which degrades to cached-with-age-labels. The standing constraint from v1 remains: no CDN-only dependencies, all assets self-containable.
 
 ## D7 — Attribution: both surfaces (gates Phase 0)
 
