@@ -113,6 +113,19 @@ export async function checkBrowserAccess(
   }
 
   if (layer.browser_access === 'materialized') {
+    if (layer.params?.['materialization_kind'] === 'static_index') {
+      const url = layer.endpoint;
+      if (new URL(url).origin !== APP_ORIGIN) {
+        return result(false, `static materialized endpoint must be same-origin with ${APP_ORIGIN}`);
+      }
+      const response = await fetchImpl(url, { cache: 'no-store', signal: AbortSignal.timeout(30_000) });
+      if (!response.ok) return result(false, `static materialized endpoint returned ${response.status}`);
+      const payload: unknown = await response.json();
+      if (!Array.isArray(payload) || payload.length === 0) {
+        return result(false, 'static materialized endpoint must contain a non-empty record array');
+      }
+      return result(true);
+    }
     const region = firstMaterializedRegion(layer);
     const url = layer.endpoint.replaceAll('{{region}}', region);
     if (new URL(url).origin !== APP_ORIGIN) {

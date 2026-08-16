@@ -395,6 +395,29 @@ export const layerDescriptorSchema = z
         });
       }
     }
+    if (d.adapter === 'precomputed' && hasQueryMode) {
+      if (d.value_type !== 'numeric') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['value_type'],
+          message: 'queryable precomputed indexes currently support numeric values',
+        });
+      }
+      if (d.params?.['key_scheme'] !== 'quadkey_z16' && d.params?.['key_scheme'] !== 'epsg3035_grid_1km') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['params', 'key_scheme'],
+          message: "queryable precomputed layers require key_scheme 'quadkey_z16' or 'epsg3035_grid_1km'",
+        });
+      }
+      if (typeof d.params?.['value_field'] !== 'string' || !/^[A-Za-z_][\w.-]*$/.test(d.params['value_field'])) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['params', 'value_field'],
+          message: 'queryable precomputed layers require a numeric value_field',
+        });
+      }
+    }
   });
 
 export type LayerDescriptor = z.infer<typeof layerDescriptorSchema>;

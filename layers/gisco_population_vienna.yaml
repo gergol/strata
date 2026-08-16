@@ -1,0 +1,33 @@
+id: population_grid_vienna_2021
+name: Population per 1 km² cell (Vienna, 2021)
+domain: society
+adapter: precomputed
+endpoint: https://gergol.github.io/strata/data/gisco-population-vienna-2021.json
+crs: EPSG:3035
+modes: [point]
+zoom_valid: [10, 18]
+value_type: numeric
+unit: people / 1 km² cell
+native_unit: people
+scale_factor: 1
+ttl: 365d
+rate_limit:
+  group: strata-static-data
+  max_concurrent: 4
+  min_interval_ms: 0
+licence: CC-BY-4.0
+commercial_use: true
+attribution: "Eurostat GISCO — Census Grid 2021"
+attribution_url: https://ec.europa.eu/eurostat/web/gisco/geodata/population-distribution/population-grids
+health_assertion:
+  at: [16.3738, 48.2082]
+  expect_range: [1, 100000]
+coverage:
+  bbox: [16.15, 48.05, 16.65, 48.4]
+provenance_note: "Usual-resident population in the containing official EPSG:3035 1 km census cell; Vienna records materialized from Eurostat GISCO's 2021 grid, release 3 July 2025"
+browser_access: materialized
+params:
+  key_scheme: epsg3035_grid_1km
+  value_field: population
+  materialization_kind: static_index
+  source_updated_at: "2025-07-03T00:00:00Z"

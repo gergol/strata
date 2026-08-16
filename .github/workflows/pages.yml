@@ -74,7 +74,15 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Wait for the materialized asset
-        run: curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 3 https://gergol.github.io/strata/data/grid_generation_mix-at.json --output /dev/null
+        run: |
+          for asset in \
+            grid_generation_mix-at.json \
+            ookla-fixed-vienna-2026q1.json \
+            gisco-population-vienna-2021.json
+          do
+            curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 3 \
+              "https://gergol.github.io/strata/data/$asset" --output /dev/null
+          done
       - name: Verify live layers with bounded transient retries
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
@@ -88,6 +96,8 @@ jobs:
               "layers/wfs_features.yaml#natura2000_nl"
               "layers/wfs_features.yaml#flood_hazard_zones_vienna"
               "layers/open_meteo_samples.yaml#weather_temperature_now"
+              "layers/ookla_broadband_vienna.yaml#broadband_fixed_download_vienna"
+              layers/gisco_population_vienna.yaml
               layers/worldcover_2021.yaml
             )
           fi

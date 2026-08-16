@@ -1,0 +1,54 @@
+defaults:
+  domain: society
+  adapter: precomputed
+  endpoint: https://gergol.github.io/strata/data/ookla-fixed-vienna-2026q1.json
+  crs: EPSG:4326
+  modes: [point, tile]
+  zoom_valid: [12, 18]
+  value_type: numeric
+  aggregation:
+    primary: mean
+  native_unit: "provider field"
+  scale_factor: 1
+  ttl: 90d
+  rate_limit:
+    group: strata-static-data
+    max_concurrent: 4
+    min_interval_ms: 0
+  licence: CC-BY-NC-SA-4.0
+  commercial_use: false
+  attribution: "Speedtest by Ookla Global Fixed Network Performance Maps"
+  attribution_url: https://github.com/teamookla/ookla-open-data
+  health_assertion:
+    at: [16.3738, 48.2082]
+    expect_range: [0, 10000]
+  coverage:
+    bbox: [16.15, 48.05, 16.65, 48.4]
+  browser_access: materialized
+  params:
+    key_scheme: quadkey_z16
+    weight_field: tests
+    materialization_kind: static_index
+    source_updated_at: "2026-04-01T00:00:00Z"
+
+layers:
+  - id: broadband_fixed_download_vienna
+    name: Fixed broadband download speed (Vienna, 2026 Q1)
+    unit: Mbps
+    provenance_note: "Ookla fixed-network measurements aggregated to z16 Web Mercator tiles for 2026 Q1; Vienna subset materialized from the official quarterly Parquet file; point value is the containing provider tile and area means are weighted by test count"
+    params:
+      value_field: avg_download_mbps
+
+  - id: broadband_fixed_upload_vienna
+    name: Fixed broadband upload speed (Vienna, 2026 Q1)
+    unit: Mbps
+    provenance_note: "Ookla fixed-network measurements aggregated to z16 Web Mercator tiles for 2026 Q1; Vienna subset materialized from the official quarterly Parquet file; point value is the containing provider tile and area means are weighted by test count"
+    params:
+      value_field: avg_upload_mbps
+
+  - id: broadband_fixed_latency_vienna
+    name: Fixed broadband latency (Vienna, 2026 Q1)
+    unit: ms
+    provenance_note: "Ookla fixed-network measurements aggregated to z16 Web Mercator tiles for 2026 Q1; Vienna subset materialized from the official quarterly Parquet file; point value is the containing provider tile and area means are weighted by test count"
+    params:
+      value_field: avg_latency_ms

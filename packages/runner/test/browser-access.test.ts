@@ -64,6 +64,31 @@ describe('browser access verification', () => {
     expect(checked.note).toContain('stale');
   });
 
+  it('accepts a same-origin non-empty static materialized index without inventing a freshness window', async () => {
+    const staticIndex = parseDescriptor({
+      ...JSON.parse(JSON.stringify(base)),
+      id: 'static_index',
+      adapter: 'precomputed',
+      endpoint: 'https://gergol.github.io/strata/data/static.json',
+      value_type: 'numeric',
+      unit: 'people',
+      scale_factor: 1,
+      coverage: 'global',
+      params: {
+        key_scheme: 'epsg3035_grid_1km',
+        value_field: 'population',
+        materialization_kind: 'static_index',
+      },
+    });
+    const checked = await checkBrowserAccess(
+      staticIndex,
+      [],
+      (async () => new Response(JSON.stringify([{ key: 'cell', population: 1 }]), { status: 200 })) as typeof fetch,
+      () => now,
+    );
+    expect(checked).toEqual({ ok: true });
+  });
+
   it('requires range support and CORS for direct COG layers', async () => {
     const cog = parseDescriptor({
       ...JSON.parse(JSON.stringify(base)),

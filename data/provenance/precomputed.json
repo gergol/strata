@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-16T20:05:00Z",
+  "tool": "DuckDB 1.4.3",
+  "artifacts": [
+    {
+      "path": "packages/client/public/data/ookla-fixed-vienna-2026q1.json",
+      "sha256": "87370ed273598119bc51c314bb911e67f7ddce9fb617083fb6cbe94464d3a30d",
+      "source": "https://ookla-open-data.s3.amazonaws.com/parquet/performance/type=fixed/year=2026/quarter=1/2026-01-01_performance_fixed_tiles.parquet",
+      "source_period": "2026 Q1",
+      "selection": "tile centroids in bbox [16.15, 48.05, 16.65, 48.4]",
+      "records": 2656
+    },
+    {
+      "path": "packages/client/public/data/gisco-population-vienna-2021.json",
+      "sha256": "546a95fd8f665b4457612b48e4b2b57b254de9b0f583294611743525c3339091",
+      "source": "https://gisco-services.ec.europa.eu/grid/grid_1km.parquet",
+      "source_period": "2021 census; GISCO grid release 2025-07-03",
+      "selection": "CNTR_ID=AT, NUTS2021_2=AT13, populated cells",
+      "records": 346
+    }
+  ]
+}
