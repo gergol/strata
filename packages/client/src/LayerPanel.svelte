@@ -116,7 +116,12 @@
 {/snippet}
 
 <section class="panel" class:degraded={layer.degraded}>
-  <button class="head" onclick={() => (expanded = !expanded)}>
+  <button
+    class="head"
+    onclick={() => (expanded = !expanded)}
+    aria-expanded={expanded}
+    aria-controls={`panel-body-${layer.id}`}
+  >
     <span class="name">{layer.name}</span>
     <span class="chips">
       {#if layer.degraded}<span class="chip error-chip" title="health check failing">degraded</span>{/if}
@@ -125,9 +130,9 @@
     </span>
   </button>
   {#if expanded}
-    <div class="body">
+    <div class="body" id={`panel-body-${layer.id}`} aria-busy={loading || areaLoading}>
       {#if loading}
-        <div class="state">querying…</div>
+        <div class="state" role="status">querying…</div>
       {:else if result}
         {@render envelope(result)}
       {/if}
@@ -166,6 +171,11 @@
   }
   .head:hover {
     background: #1f242c;
+  }
+  .head:focus-visible,
+  .area-btn:focus-visible {
+    outline: 2px solid #7ab8f5;
+    outline-offset: -2px;
   }
   .chips {
     display: flex;

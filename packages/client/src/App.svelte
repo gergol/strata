@@ -5,6 +5,7 @@
   import type { LayerSummary, LonLat } from '@strata/core';
   import { WorkerQueryEngine } from './worker-engine';
   import LayerPanel from './LayerPanel.svelte';
+  import ApiKeySettings from './ApiKeySettings.svelte';
 
   const build = __BUILD_INFO__;
   const builtAt = new Date(build.date);
@@ -54,14 +55,20 @@
 <div class="app">
   <div class="map" bind:this={mapContainer}>
     {#if mapError}
-      <div class="map-error">basemap failed to load: {mapError}</div>
+      <div class="map-error" role="alert">basemap failed to load: {mapError}</div>
     {/if}
   </div>
 
-  <aside class="side">
+  <aside class="side" aria-label="Layer results and settings">
     <header>
       <h1>Strata</h1>
-      <button class="gear" onclick={() => (showSettings = !showSettings)} title="settings">⚙</button>
+      <button
+        class="gear"
+        onclick={() => (showSettings = !showSettings)}
+        aria-label="Settings"
+        aria-expanded={showSettings}
+        aria-controls="settings-panel"
+      >⚙</button>
     </header>
 
     {#if target}
@@ -79,7 +86,7 @@
     {/if}
 
     {#if showSettings}
-      <div class="settings">
+      <div class="settings" id="settings-panel">
         <h2>Settings</h2>
         <dl>
           <dt>Build</dt>
@@ -92,6 +99,7 @@
           <a href="https://github.com/gergol/strata/actions/workflows/pages.yml" target="_blank" rel="noreferrer">deploy</a>?
           Hard-reload (Ctrl/Cmd&#8288;+&#8288;Shift&#8288;+&#8288;R).
         </p>
+        <ApiKeySettings />
         <h2>Data credits</h2>
         <ul class="credits">
           {#each layers as layer (layer.id)}
@@ -168,6 +176,11 @@
     cursor: pointer;
     font-size: 1.1rem;
     color: #9aa3ad;
+  }
+  .gear:focus-visible {
+    outline: 2px solid #7ab8f5;
+    outline-offset: 3px;
+    border-radius: 3px;
   }
   .coords {
     font-family: ui-monospace, monospace;
