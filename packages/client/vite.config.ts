@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { VitePWA } from 'vite-plugin-pwa';
 
 /**
  * Build metadata, injected at build time and surfaced in the settings panel so
@@ -28,6 +29,65 @@ export default defineConfig({
   worker: { format: 'es' },
   plugins: [
     svelte(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'script-defer',
+      includeAssets: ['strata.svg'],
+      manifest: {
+        name: 'Strata — geospatial exploration',
+        short_name: 'Strata',
+        description: 'A personal geospatial exploration instrument.',
+        theme_color: '#14171c',
+        background_color: '#14171c',
+        display: 'standalone',
+        start_url: './',
+        scope: './',
+        icons: [
+          {
+            src: 'strata.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+        ],
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        globPatterns: ['**/*.{js,css,html,svg}'],
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/gergol\.github\.io\/strata\/data\/.*\.json$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'strata-materialized-data',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 20, maxAgeSeconds: 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/gergol\/strata\//,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'strata-repo-data',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'strata-basemap',
+              expiration: { maxEntries: 300, maxAgeSeconds: 7 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+    }),
     {
       name: 'emit-version-json',
       // version.json rides next to index.html so the running app can later

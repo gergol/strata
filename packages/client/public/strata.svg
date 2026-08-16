@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Strata">
+  <rect width="512" height="512" rx="104" fill="#14171c"/>
+  <path d="M92 156c78-43 142-43 220 0s142 43 108 0v62c-78 43-142 43-220 0S58 175 92 218z" fill="#4d9de0"/>
+  <path d="M92 250c78-43 142-43 220 0s142 43 108 0v62c-78 43-142 43-220 0S58 269 92 312z" fill="#e8a33d"/>
+  <path d="M92 344c78-43 142-43 220 0s142 43 108 0v62c-78 43-142 43-220 0S58 363 92 406z" fill="#7fbf7f"/>
+</svg>
