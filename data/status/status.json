@@ -1,276 +1,275 @@
 {
-  "generatedAt": "2026-08-30T12:35:39.830Z",
+  "generatedAt": "2026-08-30T18:30:31.957Z",
   "layers": {
     "bikeshare_wienmobil_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:28.565Z"
+      "checkedAt": "2026-08-30T18:27:07.661Z"
     },
     "bikeshare_citybike_linz": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:29.292Z"
+      "checkedAt": "2026-08-30T18:27:08.369Z"
     },
     "bikeshare_nextbike_bratislava": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:29.594Z"
+      "checkedAt": "2026-08-30T18:27:08.666Z"
     },
     "population_grid_vienna_2021": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:30.114Z"
+      "checkedAt": "2026-08-30T18:27:09.174Z"
     },
     "grid_generation_mix": {
-      "ok": false,
-      "browserOk": false,
+      "ok": true,
+      "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:30.203Z",
-      "note": "materialized endpoint is stale (50937938ms old; limit 7200000ms)"
+      "checkedAt": "2026-08-30T18:27:09.262Z"
     },
     "nasa_gibs_modis_terra_true_color": {
       "ok": true,
       "browserOk": true,
       "status": "overlay_ok",
-      "checkedAt": "2026-08-30T12:32:30.746Z"
+      "checkedAt": "2026-08-30T18:27:09.838Z"
     },
     "vienna_aerial_1971": {
       "ok": true,
       "browserOk": true,
       "status": "overlay_ok",
-      "checkedAt": "2026-08-30T12:32:31.171Z"
+      "checkedAt": "2026-08-30T18:27:10.234Z"
     },
     "broadband_fixed_download_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:31.815Z"
+      "checkedAt": "2026-08-30T18:27:10.875Z"
     },
     "broadband_fixed_upload_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:31.883Z"
+      "checkedAt": "2026-08-30T18:27:10.944Z"
     },
     "broadband_fixed_latency_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:31.906Z"
+      "checkedAt": "2026-08-30T18:27:10.969Z"
     },
     "weather_temperature_now": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:31.939Z"
+      "checkedAt": "2026-08-30T18:27:11.001Z"
     },
     "air_quality_european_aqi": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:32.344Z"
+      "checkedAt": "2026-08-30T18:27:11.454Z"
     },
     "pollen_ragweed_now": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:32.727Z"
+      "checkedAt": "2026-08-30T18:27:11.840Z"
     },
     "osm_drinking_water": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:32.835Z"
+      "checkedAt": "2026-08-30T18:27:11.945Z"
     },
     "osm_defibrillators": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:33.972Z"
+      "checkedAt": "2026-08-30T18:27:12.876Z"
     },
     "osm_public_toilets": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:32:37.210Z"
+      "checkedAt": "2026-08-30T18:27:13.812Z"
     },
     "osm_benches": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:33:13.143Z"
+      "checkedAt": "2026-08-30T18:27:14.753Z"
     },
     "osm_bicycle_parking": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:33:19.823Z"
+      "checkedAt": "2026-08-30T18:27:52.471Z"
     },
     "osm_parcel_lockers": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:33:21.140Z"
+      "checkedAt": "2026-08-30T18:27:57.277Z"
     },
     "osm_public_bookcases": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:33:58.411Z"
+      "checkedAt": "2026-08-30T18:27:58.177Z"
     },
     "osm_recycling": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:34:21.412Z"
+      "checkedAt": "2026-08-30T18:28:29.200Z"
     },
     "osm_charging_stations": {
-      "ok": false,
+      "ok": true,
       "browserOk": true,
-      "status": "error",
-      "checkedAt": "2026-08-30T12:34:23.769Z"
+      "status": "ok",
+      "checkedAt": "2026-08-30T18:29:00.867Z"
     },
     "osm_post_boxes": {
-      "ok": false,
+      "ok": true,
       "browserOk": true,
-      "status": "error",
-      "checkedAt": "2026-08-30T12:34:47.284Z"
+      "status": "ok",
+      "checkedAt": "2026-08-30T18:29:31.369Z"
     },
     "osm_police": {
       "ok": false,
       "browserOk": true,
       "status": "error",
-      "checkedAt": "2026-08-30T12:34:47.788Z"
+      "checkedAt": "2026-08-30T18:29:40.767Z"
     },
     "osm_fire_stations": {
       "ok": false,
       "browserOk": true,
       "status": "error",
-      "checkedAt": "2026-08-30T12:34:48.788Z"
+      "checkedAt": "2026-08-30T18:29:55.735Z"
     },
     "osm_hospitals": {
       "ok": false,
       "browserOk": true,
       "status": "error",
-      "checkedAt": "2026-08-30T12:34:49.788Z"
+      "checkedAt": "2026-08-30T18:29:56.239Z"
     },
     "osm_bunkers": {
       "ok": false,
       "browserOk": true,
       "status": "error",
-      "checkedAt": "2026-08-30T12:34:50.790Z"
+      "checkedAt": "2026-08-30T18:29:57.238Z"
     },
     "osm_chimneys": {
       "ok": false,
       "browserOk": true,
       "status": "error",
-      "checkedAt": "2026-08-30T12:34:50.790Z"
+      "checkedAt": "2026-08-30T18:29:58.241Z"
     },
     "soilgrids_ph": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:34:50.796Z"
+      "checkedAt": "2026-08-30T18:29:59.245Z"
     },
     "vienna_surface_shadow": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:34:56.476Z"
+      "checkedAt": "2026-08-30T18:30:04.440Z"
     },
     "vienna_surface_viewshed": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:34:56.771Z"
+      "checkedAt": "2026-08-30T18:30:04.742Z"
     },
     "natura2000_nl": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:34:56.890Z"
+      "checkedAt": "2026-08-30T18:30:04.955Z"
     },
     "cadastral_parcels_nl": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:01.771Z"
+      "checkedAt": "2026-08-30T18:30:09.908Z"
     },
     "flood_hazard_zones_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:02.245Z"
+      "checkedAt": "2026-08-30T18:30:10.373Z"
     },
     "wikidata_lighthouses": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:04.561Z"
+      "checkedAt": "2026-08-30T18:30:13.382Z"
     },
     "wikidata_castles": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:04.947Z"
+      "checkedAt": "2026-08-30T18:30:13.484Z"
     },
     "wikidata_memorials": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:06.896Z"
+      "checkedAt": "2026-08-30T18:30:16.477Z"
     },
     "wikidata_museums": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:08.487Z"
+      "checkedAt": "2026-08-30T18:30:19.040Z"
     },
     "wikidata_universities": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:12.811Z"
+      "checkedAt": "2026-08-30T18:30:19.076Z"
     },
     "wikidata_stadiums": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:15.671Z"
+      "checkedAt": "2026-08-30T18:30:21.185Z"
     },
     "wikidata_coal_power_stations": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:16.956Z"
+      "checkedAt": "2026-08-30T18:30:22.573Z"
     },
     "wikidata_nuclear_power_plants": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:19.973Z"
+      "checkedAt": "2026-08-30T18:30:24.606Z"
     },
     "wikidata_observatories": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:22.709Z"
+      "checkedAt": "2026-08-30T18:30:26.143Z"
     },
     "wikidata_international_airports": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-08-30T12:35:28.765Z"
+      "checkedAt": "2026-08-30T18:30:30.400Z"
     },
     "worldcover_2021": {
       "ok": true,
       "browserOk": true,
       "status": "overlay_ok",
-      "checkedAt": "2026-08-30T12:35:39.024Z"
+      "checkedAt": "2026-08-30T18:30:30.975Z"
     }
   }
 }
