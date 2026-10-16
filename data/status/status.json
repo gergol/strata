@@ -1,279 +1,282 @@
 {
-  "generatedAt": "2026-10-16T11:34:56.724Z",
+  "generatedAt": "2026-10-16T16:50:57.206Z",
   "layers": {
     "bikeshare_wienmobil_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:20.189Z"
+      "checkedAt": "2026-10-16T16:40:03.843Z"
     },
     "bikeshare_citybike_linz": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:21.133Z"
+      "checkedAt": "2026-10-16T16:40:04.730Z"
     },
     "bikeshare_nextbike_bratislava": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:21.554Z"
+      "checkedAt": "2026-10-16T16:40:05.561Z"
     },
     "population_grid_vienna_2021": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:22.050Z"
+      "checkedAt": "2026-10-16T16:40:06.050Z"
     },
     "grid_generation_mix": {
       "ok": false,
       "browserOk": false,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:22.247Z",
-      "note": "materialized endpoint is stale (35909193ms old; limit 7200000ms)"
+      "checkedAt": "2026-10-16T16:40:06.207Z",
+      "note": "materialized endpoint is stale (12098700ms old; limit 7200000ms)"
     },
     "nasa_gibs_modis_terra_true_color": {
       "ok": true,
       "browserOk": true,
       "status": "overlay_ok",
-      "checkedAt": "2026-10-16T11:25:22.835Z"
+      "checkedAt": "2026-10-16T16:40:06.832Z"
     },
     "vienna_aerial_1971": {
       "ok": true,
       "browserOk": true,
       "status": "overlay_ok",
-      "checkedAt": "2026-10-16T11:25:23.364Z"
+      "checkedAt": "2026-10-16T16:40:07.485Z"
     },
     "broadband_fixed_download_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:24.174Z"
+      "checkedAt": "2026-10-16T16:40:08.530Z"
     },
     "broadband_fixed_upload_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:24.322Z"
+      "checkedAt": "2026-10-16T16:40:08.641Z"
     },
     "broadband_fixed_latency_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:24.362Z"
+      "checkedAt": "2026-10-16T16:40:08.652Z"
     },
     "weather_temperature_now": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:24.406Z"
+      "checkedAt": "2026-10-16T16:40:08.665Z"
     },
     "air_quality_european_aqi": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:24.920Z"
+      "checkedAt": "2026-10-16T16:40:09.389Z"
     },
     "pollen_ragweed_now": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:25.406Z"
+      "checkedAt": "2026-10-16T16:40:10.068Z"
     },
     "osm_drinking_water": {
       "ok": false,
       "browserOk": false,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:25.530Z",
+      "checkedAt": "2026-10-16T16:40:10.222Z",
       "note": "browser CORS denied for https://overpass-api.de from https://gergol.github.io (access-control-allow-origin=missing)"
     },
     "osm_defibrillators": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:25:57.073Z"
+      "checkedAt": "2026-10-16T16:40:50.447Z"
     },
     "osm_public_toilets": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:26:30.804Z"
+      "checkedAt": "2026-10-16T16:42:39.450Z"
     },
     "osm_benches": {
-      "ok": true,
-      "browserOk": true,
-      "status": "ok",
-      "checkedAt": "2026-10-16T11:27:05.803Z"
+      "ok": false,
+      "browserOk": false,
+      "status": "error",
+      "checkedAt": "2026-10-16T16:44:14.612Z",
+      "note": "browser CORS denied for https://overpass-api.de from https://gergol.github.io (access-control-allow-origin=missing)"
     },
     "osm_bicycle_parking": {
-      "ok": true,
-      "browserOk": true,
+      "ok": false,
+      "browserOk": false,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:27:40.825Z"
+      "checkedAt": "2026-10-16T16:44:15.774Z",
+      "note": "browser CORS denied for https://overpass-api.de from https://gergol.github.io (access-control-allow-origin=missing)"
     },
     "osm_parcel_lockers": {
-      "ok": true,
-      "browserOk": true,
-      "status": "ok",
-      "checkedAt": "2026-10-16T11:28:19.286Z"
+      "ok": false,
+      "browserOk": false,
+      "status": "error",
+      "checkedAt": "2026-10-16T16:44:59.906Z",
+      "note": "browser CORS denied for https://overpass-api.de from https://gergol.github.io (access-control-allow-origin=missing)"
     },
     "osm_public_bookcases": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:29:02.534Z"
+      "checkedAt": "2026-10-16T16:45:01.069Z"
     },
     "osm_recycling": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:29:39.208Z"
+      "checkedAt": "2026-10-16T16:45:48.606Z"
     },
     "osm_charging_stations": {
-      "ok": false,
-      "browserOk": false,
-      "status": "error",
-      "checkedAt": "2026-10-16T11:30:19.767Z",
-      "note": "browser CORS denied for https://overpass-api.de from https://gergol.github.io (access-control-allow-origin=missing)"
-    },
-    "osm_post_boxes": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:30:20.934Z"
+      "checkedAt": "2026-10-16T16:46:31.562Z"
+    },
+    "osm_post_boxes": {
+      "ok": false,
+      "browserOk": false,
+      "status": "error",
+      "checkedAt": "2026-10-16T16:47:04.259Z",
+      "note": "browser CORS denied for https://overpass-api.de from https://gergol.github.io (access-control-allow-origin=missing)"
     },
     "osm_police": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:30:58.939Z"
+      "checkedAt": "2026-10-16T16:47:05.502Z"
     },
     "osm_fire_stations": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:31:40.167Z"
+      "checkedAt": "2026-10-16T16:47:47.470Z"
     },
     "osm_hospitals": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:32:24.573Z"
+      "checkedAt": "2026-10-16T16:48:28.556Z"
     },
     "osm_bunkers": {
-      "ok": true,
-      "browserOk": true,
-      "status": "ok",
-      "checkedAt": "2026-10-16T11:33:11.516Z"
-    },
-    "osm_chimneys": {
       "ok": false,
       "browserOk": false,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:33:43.606Z",
+      "checkedAt": "2026-10-16T16:49:04.680Z",
       "note": "browser CORS denied for https://overpass-api.de from https://gergol.github.io (access-control-allow-origin=missing)"
+    },
+    "osm_chimneys": {
+      "ok": true,
+      "browserOk": true,
+      "status": "ok",
+      "checkedAt": "2026-10-16T16:49:41.893Z"
     },
     "soilgrids_ph": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:27.623Z"
+      "checkedAt": "2026-10-16T16:50:27.197Z"
     },
     "vienna_surface_shadow": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:31.356Z"
+      "checkedAt": "2026-10-16T16:50:31.753Z"
     },
     "vienna_surface_viewshed": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:32.082Z"
+      "checkedAt": "2026-10-16T16:50:32.424Z"
     },
     "natura2000_nl": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:32.243Z"
+      "checkedAt": "2026-10-16T16:50:32.506Z"
     },
     "cadastral_parcels_nl": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:37.969Z"
+      "checkedAt": "2026-10-16T16:50:39.254Z"
     },
     "flood_hazard_zones_vienna": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:38.546Z"
+      "checkedAt": "2026-10-16T16:50:39.956Z"
     },
     "wikidata_lighthouses": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:41.113Z"
+      "checkedAt": "2026-10-16T16:50:42.605Z"
     },
     "wikidata_castles": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:41.266Z"
+      "checkedAt": "2026-10-16T16:50:42.839Z"
     },
     "wikidata_memorials": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:42.913Z"
+      "checkedAt": "2026-10-16T16:50:44.310Z"
     },
     "wikidata_museums": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:44.243Z"
+      "checkedAt": "2026-10-16T16:50:45.765Z"
     },
     "wikidata_universities": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:46.162Z"
+      "checkedAt": "2026-10-16T16:50:47.304Z"
     },
     "wikidata_stadiums": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:47.259Z"
+      "checkedAt": "2026-10-16T16:50:48.755Z"
     },
     "wikidata_coal_power_stations": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:49.152Z"
+      "checkedAt": "2026-10-16T16:50:50.351Z"
     },
     "wikidata_nuclear_power_plants": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:51.064Z"
+      "checkedAt": "2026-10-16T16:50:52.177Z"
     },
     "wikidata_observatories": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:51.822Z"
+      "checkedAt": "2026-10-16T16:50:53.286Z"
     },
     "wikidata_international_airports": {
       "ok": true,
       "browserOk": true,
       "status": "ok",
-      "checkedAt": "2026-10-16T11:34:53.620Z"
+      "checkedAt": "2026-10-16T16:50:54.889Z"
     },
     "worldcover_2021": {
       "ok": true,
       "browserOk": true,
       "status": "overlay_ok",
-      "checkedAt": "2026-10-16T11:34:54.750Z"
+      "checkedAt": "2026-10-16T16:50:56.269Z"
     }
   }
 }
